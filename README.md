@@ -10,6 +10,13 @@ Building
 The build is configured using maven so you build by invoking the following:
 
     mvn -P scala-ide-master-scala-trunk clean package
+
+Tests
+-----
+
+If you want to run the tests in Eclipse you can follow the set-up guide outline
+[here](http://scala-ide.org/docs/dev/testing/eclipse-tests.html)
+
     
 Running it
 ----------
