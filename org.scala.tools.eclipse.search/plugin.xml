@@ -8,20 +8,17 @@
             label="Sample Action Set"
             visible="true">
          <menu
-               id="sampleMenu"
-               label="Sample &amp;Menu">
+               id="semanticSearchMenu"
+               label="Semantic &amp;Search">
             <separator
                   name="sampleGroup">
             </separator>
          </menu>
          <action
-               class="org.scala.tools.eclipse.search.SampleAction"
-               icon="icons/sample.gif"
-               id="org.scala.tools.eclipse.search.sampleAction"
-               label="&amp;Sample Action"
-               menubarPath="sampleMenu/sampleGroup"
-               toolbarPath="sampleGroup"
-               tooltip="Hello, Scala world">
+               class="org.scala.tools.eclipse.search.actions.FindReferencesToMethodAction"
+               id="org.scala.tools.eclipse.search.actions.FindReferencesToMethodAction"
+               label="&amp;Find References To Method"
+               menubarPath="semanticSearchMenu/sampleGroup">
          </action>
       </actionSet>
    </extension>
