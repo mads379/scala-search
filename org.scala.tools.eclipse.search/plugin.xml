@@ -1,25 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.2"?>
 <plugin>
-   <extension
-         point="org.eclipse.ui.actionSets">
-      <actionSet
-            id="example.actionSet"
-            label="Sample Action Set"
+
+  <extension point="org.eclipse.ui.views">
+    <view allowMultiple="false"
+          category="org.eclipse.ui"
+          class="org.scala.tools.eclipse.search.ui.SemanticSearchView"
+          id="org.scala.tools.eclipse.search.ui.SemanticSearchView"
+          name="Semantic Search View"
+          restorable="true">
+    </view>
+  </extension>
+
+  <extension point="org.eclipse.ui.perspectiveExtensions">
+    <perspectiveExtension targetID="org.eclipse.jdt.ui.JavaPerspective">
+      <view closeable="true"
+            id="org.scala.tools.eclipse.search.ui.SemanticSearchView"
+            minimized="false"
+            moveable="true"
+            ratio="0.5"
+            relationship="stack"
+            relative="org.eclipse.ui.console.ConsoleView"
+            showTitle="true"
+            standalone="false"
             visible="true">
-         <menu
-               id="semanticSearchMenu"
-               label="Semantic &amp;Search">
-            <separator
-                  name="sampleGroup">
-            </separator>
-         </menu>
-         <action
-               class="org.scala.tools.eclipse.search.actions.FindReferencesToMethodAction"
-               id="org.scala.tools.eclipse.search.actions.FindReferencesToMethodAction"
-               label="&amp;Find References To Method"
-               menubarPath="semanticSearchMenu/sampleGroup">
-         </action>
-      </actionSet>
-   </extension>
+      </view>
+      <viewShortcut id="org.scala.tools.eclipse.search.ui.SemanticSearchView"></viewShortcut>
+      <actionSet id="org.scala.tools.eclipse.search.actionSet"></actionSet>
+    </perspectiveExtension>
+  </extension>
+
+  <extension point="org.eclipse.ui.actionSets">
+    <actionSet id="org.scala.tools.eclipse.search.actionSet"
+               label="Semantic Search"
+               visible="true">
+      <menu id="semanticSearchMenu"
+            label="Semantic &amp;Search">
+        <separator name="sampleGroup"> </separator>
+      </menu>
+      <action class="org.scala.tools.eclipse.search.actions.FindReferencesToMethodAction"
+              id="org.scala.tools.eclipse.search.actions.FindReferencesToMethodAction"
+              label="&amp;Find References To Method"
+              menubarPath="semanticSearchMenu/sampleGroup">
+      </action>
+    </actionSet>
+  </extension>
+
 </plugin>
