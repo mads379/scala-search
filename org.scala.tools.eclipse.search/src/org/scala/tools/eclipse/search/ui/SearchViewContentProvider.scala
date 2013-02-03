@@ -1,24 +1,27 @@
 package org.scala.tools.eclipse.search.ui
 
 import scala.Array.canBuildFrom
-
 import org.eclipse.jface.viewers.ITreeContentProvider
 import org.eclipse.jface.viewers.Viewer
+import org.scala.tools.eclipse.search.Occurrence
+import scala.tools.eclipse.logging.HasLogger
 
-class SearchViewContentProvider extends ITreeContentProvider {
+/**
+ * Responsible for telling a TreeViewer what content to display.
+ */
+class SearchViewContentProvider extends ITreeContentProvider with HasLogger {
 
-  val data = Map(
-    ("First Occurrence" -> List("x","y","z")),
-    ("Second Occurrence" -> List("x","y","z")),
-    ("Third Occurrence" -> List("x","y","z"))
-  )
+  private var data: Map[String, Seq[Occurrence]] = Map()
 
-  override def dispose() {
-
-  }
+  override def dispose() { }
 
   override def inputChanged(viewer: Viewer, oldInput: Object, newInput: Object) {
-
+    if (newInput.isInstanceOf[Map[_, _]]) {
+      data = newInput.asInstanceOf[Map[String, Seq[Occurrence]]]
+    } else {
+      logger.debug(
+          "Tried to update the input with something that wasn't a map %s".format(newInput.toString))
+    }
   }
 
   override def getElements(inputElement: Object): Array[Object] = {

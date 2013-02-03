@@ -14,20 +14,19 @@ import scala.tools.eclipse.ScalaSourceFileEditor
 import org.eclipse.jface.text.ITextSelection
 import scala.tools.eclipse.javaelements.ScalaCompilationUnit
 import org.eclipse.jdt.core.IMethod
-import org.scala.tools.eclipse.search.MemoryIndex
+import org.scala.tools.eclipse.search.indexing.MemoryIndex
 import org.scala.tools.eclipse.search.OccurrenceCollector
 import org.scala.tools.eclipse.search.Reference
+import org.scala.tools.eclipse.search.SemanticSearchPlugin
+import org.scala.tools.eclipse.search.Occurrence
 
 class FindReferencesToMethodAction extends IWorkbenchWindowActionDelegate with HasLogger {
 
   private var window: IWorkbenchWindow = _
 
-  def dispose() {
+  def dispose() {}
 
-  }
-
-  def init(w: IWorkbenchWindow) {
-    // TODO: Initialize background indexing thread.
+  def init(w: IWorkbenchWindow) { 
     window = w
   }
 
@@ -53,12 +52,10 @@ class FindReferencesToMethodAction extends IWorkbenchWindowActionDelegate with H
             scalaEditor.getEditorInput() match {
               case fei: IFileEditorInput => {
                 ScalaPlugin.plugin.asScalaProject(fei.getFile().getProject()).foreach { proj =>
-                  val index = indexProject(proj)
+                  val index = SemanticSearchPlugin.index
                   val occurrences = index.lookup(method.getElementName())
-                  logger.debug(method.getElementName)
-                  logger.debug(occurrences)
-                  val references = occurrences.filter( occ => occ.occurrenceKind == Reference)
-                  MessageDialog.openInformation( window.getShell(), "TestPDE", "found references: %s".format(references.mkString("\n")))
+                  val results: Map[String, Seq[Occurrence]] = occurrences.groupBy(_.fileName) 
+                  SemanticSearchPlugin.resultsView.setInput(results)
                 }
               }
               case _ => {}
@@ -70,19 +67,6 @@ class FindReferencesToMethodAction extends IWorkbenchWindowActionDelegate with H
         }
       }
     }
-  }
-
-  def indexProject(proj: ScalaProject): MemoryIndex = {
-    val index = new MemoryIndex()
-    proj.allSourceFiles.foreach {  file =>
-      val path = file.getFullPath().toOSString()
-      ScalaSourceFile.createFromPath(path).foreach { cu =>
-        OccurrenceCollector.findOccurrences(cu).fold(
-          fail => logger.debug(fail),
-          occurrences => index.addOccurrences(path, occurrences))
-      }
-    }
-    index
   }
 
   def selectionChanged(action: IAction, selection: ISelection) { }

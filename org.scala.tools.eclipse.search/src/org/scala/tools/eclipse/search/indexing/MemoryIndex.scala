@@ -1,9 +1,9 @@
-package org.scala.tools.eclipse.search
+package org.scala.tools.eclipse.search.indexing
 
-import scala.tools.eclipse.javaelements.ScalaSourceFile
 import scala.collection.mutable.Map
 import scala.tools.eclipse.logging.HasLogger
 import scala.collection.mutable.Buffer
+import org.scala.tools.eclipse.search.Occurrence
 
 /**
  * Fun little in-memory implementation of an index. This is not
@@ -12,9 +12,10 @@ import scala.collection.mutable.Buffer
  */
 class MemoryIndex extends HasLogger {
 
+  private var lock = new Object()
   private val files: Map[String, Map[String, Buffer[Occurrence]]] = Map()
 
-  def addOccurrences(path: String, occurrences: Seq[Occurrence]) {
+  def addOccurrences(path: String, occurrences: Seq[Occurrence]) = lock.synchronized {
     val index = files.get(path).getOrElse {
       val newIndex = Map[String, Buffer[Occurrence]]()
       files += (path -> newIndex)
@@ -31,10 +32,10 @@ class MemoryIndex extends HasLogger {
     }
   }
 
-  def lookup(word: String): Iterable[Occurrence] = {
+  def lookup(word: String): Seq[Occurrence] = lock.synchronized {
     logger.debug(files)
     files.values.flatMap { index => 
       index.getOrElse(word, Buffer())
-    }
+    }.toSeq
   }
 }

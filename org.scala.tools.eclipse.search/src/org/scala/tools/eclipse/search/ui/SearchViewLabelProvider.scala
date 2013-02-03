@@ -1,15 +1,35 @@
 package org.scala.tools.eclipse.search.ui
 
 import org.eclipse.jface.viewers.LabelProvider
+import org.eclipse.jface.viewers.ViewerCell
+import org.eclipse.jface.viewers.StyledString
+import org.scala.tools.eclipse.search.Occurrence
+import org.eclipse.jface.viewers.StyledCellLabelProvider
+import org.eclipse.ui.PlatformUI
+import org.eclipse.ui.ISharedImages
 
 /**
  * Responsible for telling Eclipse how to render the results in the
  * tree view (i.e. the view that shows the results).
  */
-class SearchViewLabelProvider extends LabelProvider {
+class SearchViewLabelProvider extends StyledCellLabelProvider {
 
-  override def getText(element: Object): String = {
-    element.toString()
+  override def update(cell: ViewerCell) {
+    val elem: Object = cell.getElement()
+    val text = new StyledString
+
+    if (elem.isInstanceOf[String]) {
+      val str = elem.asInstanceOf[String]
+      text.append(str)
+      text.append(" (%s)".format(0.toString), StyledString.COUNTER_STYLER)
+      cell.setImage(PlatformUI.getWorkbench().getSharedImages().getImage(ISharedImages.IMG_OBJ_FILE))
+    } else {
+      val occurrence = elem.asInstanceOf[Occurrence]
+      text.append("%s on line %s".format(occurrence.word, occurrence.line))
+    }
+    cell.setText(text.toString)
+    cell.setStyleRanges(text.getStyleRanges)
+    super.update(cell)
   }
 
 }

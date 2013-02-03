@@ -1,8 +1,9 @@
-Manifest-Version: 1.0
+wManifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Scala Search
 Bundle-SymbolicName: org.scala.tools.eclipse.search;singleton:=true
 Bundle-Version: 0.1.0.qualifier
+Bundle-Activator: org.scala.tools.eclipse.search.SemanticSearchPlugin
 Bundle-Vendor: Scala IDE
 Bundle-ActivationPolicy: lazy
 Bundle-Localization: plugin

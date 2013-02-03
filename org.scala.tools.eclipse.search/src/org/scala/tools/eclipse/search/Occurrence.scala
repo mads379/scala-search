@@ -9,7 +9,8 @@ case object Method extends EntityKind
 
 case class Occurrence(
     word: String,
-    file: String,
+    path: String,
+    fileName: String,
     line: Int,
     offset: Int,
     occurrenceKind: OccurrenceKind,

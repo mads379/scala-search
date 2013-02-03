@@ -21,24 +21,25 @@ object OccurrenceCollector {
   private def findOccurrences(pc: ScalaPresentationCompiler)
                              (file: ScalaSourceFile, tree: pc.Tree): Seq[Occurrence] = {
     import pc._
+    val fileName = file.file.file.getName()
     val path = file.file.file.getAbsolutePath()
     tree.collect {
       // Direct invocations of methods
       case Apply(t@Ident(fun), _) if !isSynthetic(pc)(t, fun.toString) =>
-        Occurrence(fun.toString, path, t.pos.line, t.pos.column, Reference, Method)
+        Occurrence(fun.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method)
 
       // You can have a long chain of invocations Apply(Select(..))
       // TODO check if this will skip some occurrences, i.e. my.foo().bar().test() might skip bar, test.
       case Apply(t@Select(_, name), _) if !isSynthetic(pc)(t, name.toString) =>
-        Occurrence(name.toString, path, t.pos.line, t.pos.column, Reference, Method)
+        Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method)
 
       // A method w/o an argument doesn't result in an Apply node, simply a Select node.
       case t@Select(_,name) if !isSynthetic(pc)(t, name.toString) =>
-        Occurrence(name.toString, path, t.pos.line, t.pos.column, Reference, Method) /* Not necessarily a method. */
+        Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method) /* Not necessarily a method. */
 
       // Method definitions
       case t@DefDef(_, name, _, _, _, _) if !isSynthetic(pc)(t, name.toString) =>
-        Occurrence(name.toString, path, t.pos.line, t.pos.column, Declaration, Method)
+        Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Declaration, Method)
     }
   }
 
