@@ -16,11 +16,15 @@ class SearchViewContentProvider extends ITreeContentProvider with HasLogger {
   override def dispose() { }
 
   override def inputChanged(viewer: Viewer, oldInput: Object, newInput: Object) {
-    if (newInput.isInstanceOf[Map[_, _]]) {
-      data = newInput.asInstanceOf[Map[String, Seq[Occurrence]]]
+    if (newInput == null) {
+      logger.debug("new input was null")
     } else {
-      logger.debug(
-          "Tried to update the input with something that wasn't a map %s".format(newInput.toString))
+      if (newInput.isInstanceOf[Map[_, _]]) {
+        data = newInput.asInstanceOf[Map[String, Seq[Occurrence]]]
+      } else {
+        logger.debug(
+            "Tried to update the input with something that wasn't a map %s".format(newInput.toString))
+      }
     }
   }
 
