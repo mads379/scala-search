@@ -44,8 +44,9 @@ object OccurrenceCollector {
             occurrences += Occurrence(fun.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method) /* Not necessarily a method. */
 
           // Invoking a method on an instance w/o an argument doesn't result in an Apply node, simply a Select node.
-          case t@Select(_,name) if !isSynthetic(pc)(t, name.toString) =>
+          case t@Select(rest,name) if !isSynthetic(pc)(t, name.toString) =>
             occurrences += Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method) /* Not necessarily a method. */
+            rest.foreach { super.traverse } // recurse in the case of chained selects: foo.baz.bar
 
           // Method definitions
           case t@DefDef(_, name, _, _, _, body) if !isSynthetic(pc)(t, name.toString) =>
