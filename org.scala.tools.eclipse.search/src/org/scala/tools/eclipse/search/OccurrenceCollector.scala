@@ -15,7 +15,7 @@ object OccurrenceCollector {
       pcompiler.withParseTree(source) { tree =>
         Right(findOccurrences(pcompiler)(file, tree)): Either[String, Seq[Occurrence]]
       }
-    })(Left("Couldn't get source file for %".format(file.file.path.toString()))) 
+    })(Left("Couldn't get source file for %".format(file.file.path.toString())))
   }
 
   private def findOccurrences(pc: ScalaPresentationCompiler)
@@ -23,24 +23,41 @@ object OccurrenceCollector {
     import pc._
     val fileName = file.file.file.getName()
     val path = file.file.file.getAbsolutePath()
-    tree.collect {
-      // Direct invocations of methods
-      case Apply(t@Ident(fun), _) if !isSynthetic(pc)(t, fun.toString) =>
-        Occurrence(fun.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method)
 
-      // You can have a long chain of invocations Apply(Select(..))
-      // TODO check if this will skip some occurrences, i.e. my.foo().bar().test() might skip bar, test.
-      case Apply(t@Select(_, name), _) if !isSynthetic(pc)(t, name.toString) =>
-        Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method)
+    val occurrences = new scala.collection.mutable.ListBuffer[Occurrence]()
+    val traverser = new Traverser {
+      override def traverse(tree: Tree) {
+        tree match {
+          // Direct invocations of methods
+          case Apply(t@Ident(fun), args) if !isSynthetic(pc)(t, fun.toString) =>
+            occurrences += Occurrence(fun.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method)
+            args.foreach { super.traverse } // recurse on the arguments
 
-      // A method w/o an argument doesn't result in an Apply node, simply a Select node.
-      case t@Select(_,name) if !isSynthetic(pc)(t, name.toString) =>
-        Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method) /* Not necessarily a method. */
+          // E.g. foo.bar()
+          case Apply(t@Select(rest, name), args) if !isSynthetic(pc)(t, name.toString) =>
+            occurrences += Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method)
+            args.foreach { super.traverse } // recurse on the arguments
+            super.traverse(rest) // We recurse in the case of chained invocations, foo.bar().baz()
 
-      // Method definitions
-      case t@DefDef(_, name, _, _, _, _) if !isSynthetic(pc)(t, name.toString) =>
-        Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Declaration, Method)
+          // Invoking a method w/o an argument doesn't result in apply, just an Ident node.
+          case t@Ident(fun) if !isSynthetic(pc)(t, fun.toString) =>
+            occurrences += Occurrence(fun.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method) /* Not necessarily a method. */
+
+          // Invoking a method on an instance w/o an argument doesn't result in an Apply node, simply a Select node.
+          case t@Select(_,name) if !isSynthetic(pc)(t, name.toString) =>
+            occurrences += Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Reference, Method) /* Not necessarily a method. */
+
+          // Method definitions
+          case t@DefDef(_, name, _, _, _, body) if !isSynthetic(pc)(t, name.toString) =>
+            occurrences += Occurrence(name.toString, path, fileName, t.pos.line, t.pos.column, Declaration, Method)
+            super.traverse(body) // We recurse in the case of chained invocations, foo.bar().baz()
+
+          case _ => super.traverse(tree)
+        }
+      }
     }
+    traverser.apply(tree)
+    occurrences
   }
 
   private def isSynthetic(pc: ScalaPresentationCompiler)

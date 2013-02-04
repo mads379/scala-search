@@ -14,4 +14,8 @@ case class Occurrence(
     line: Int,
     offset: Int,
     occurrenceKind: OccurrenceKind,
-    entity: EntityKind)
+    entity: EntityKind) {
+  
+  override def toString = "%s in %s on (%s,%s) %s".format(word, fileName, line.toString, offset.toString, occurrenceKind.toString) 
+  
+}
