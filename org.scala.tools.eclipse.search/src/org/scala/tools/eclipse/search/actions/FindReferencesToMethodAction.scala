@@ -2,7 +2,6 @@ package org.scala.tools.eclipse.search.actions
 
 import scala.tools.eclipse.ScalaSourceFileEditor
 import scala.tools.eclipse.logging.HasLogger
-
 import org.eclipse.jface.action.IAction
 import org.eclipse.jface.dialogs.MessageDialog
 import org.eclipse.jface.viewers.ISelection
@@ -11,6 +10,7 @@ import org.eclipse.ui.IWorkbenchWindowActionDelegate
 import org.scala.tools.eclipse.search.Occurrence
 import org.scala.tools.eclipse.search.SemanticSearchPlugin
 import org.scala.tools.eclipse.search.ui.Helper
+import org.scala.tools.eclipse.search.ui.SearchView
 
 class FindReferencesToMethodAction
   extends IWorkbenchWindowActionDelegate
@@ -29,6 +29,7 @@ class FindReferencesToMethodAction
       editor <- scalaEditor { error("Active editor wasn't a Scala editor") }
       method <- Helper.getSelectedMethod(editor) { error("You need to have a method selected") }
     } yield {
+      // TODO: Should show the view, and then load results asynchronously
       val index = SemanticSearchPlugin.index
       val occurrences = index.lookup(method.getElementName())
       val results: Map[String, Seq[Occurrence]] = occurrences.groupBy(_.fileName)

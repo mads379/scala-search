@@ -32,9 +32,12 @@ class MemoryIndex extends HasLogger {
     }
   }
 
+  def removeOccurrences(path: String) = lock.synchronized {
+    files -= path
+  }
+
   def lookup(word: String): Seq[Occurrence] = lock.synchronized {
-    logger.debug(files)
-    files.values.flatMap { index => 
+    files.values.flatMap { index =>
       index.getOrElse(word, Buffer())
     }.toSeq
   }

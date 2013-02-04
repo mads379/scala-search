@@ -35,7 +35,7 @@ class Indexer(memoryIndex: MemoryIndex) extends HasLogger {
   }
 
   private def addOccurrencesInFile(file: String, occurrences: Seq[Occurrence]) = {
-    logger.debug("Found occurrences in file %s %s".format(file, occurrences.mkString("\n")))
+    memoryIndex.removeOccurrences(file)
     memoryIndex.addOccurrences(file, occurrences)
   }
 

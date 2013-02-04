@@ -28,13 +28,14 @@ class SemanticSearchPlugin extends AbstractUIPlugin with HasLogger {
     initialIndexJob.schedule()
     initialIndexJob.setPriority(Job.LONG) // long running job
 
-    // Background job that periodically update the index.
+    // Background job that periodically updates the index.
     val indexUpdateJob = new UpdateIndexJob()
     indexUpdateJob.setSystem(true)
     indexUpdateJob.schedule(updateInterval)
   }
 
   override def stop(context: BundleContext) {
+    // TODO: Should stop any jobs that are still running.
     logger.debug("Stopping semantic search plugin")
   }
 
@@ -51,7 +52,7 @@ object SemanticSearchPlugin {
    * creating the view we need to have this annoying global variable*/
   var resultsView: TreeViewer = _
 
-  final val PLUGIN_ID: String = "org.scala.tools.eclipse.search";
+  final val PLUGIN_ID: String = "org.scala.tools.eclipse.search"
 
   def getPluginId(): String = PLUGIN_ID
 
