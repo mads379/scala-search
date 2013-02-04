@@ -25,7 +25,7 @@ class SearchViewLabelProvider extends StyledCellLabelProvider {
       cell.setImage(PlatformUI.getWorkbench().getSharedImages().getImage(ISharedImages.IMG_OBJ_FILE))
     } else {
       val occurrence = elem.asInstanceOf[Occurrence]
-      text.append("%s on line %s".format(occurrence.word, occurrence.line))
+      text.append("%s on line".format(occurrence.word))
     }
     cell.setText(text.toString)
     cell.setStyleRanges(text.getStyleRanges)

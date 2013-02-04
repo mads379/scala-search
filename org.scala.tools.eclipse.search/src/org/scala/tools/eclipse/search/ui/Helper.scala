@@ -5,7 +5,6 @@ import scala.tools.eclipse.ScalaEditor
 import scala.tools.eclipse.ScalaSourceFileEditor
 import scala.tools.eclipse.javaelements.ScalaCompilationUnit
 import scala.tools.eclipse.logging.HasLogger
-
 import org.eclipse.core.resources.IFile
 import org.eclipse.core.resources.IMarker
 import org.eclipse.jdt.core.IMethod
@@ -20,6 +19,9 @@ import org.eclipse.ui.part.MultiPageEditorPart
 import org.eclipse.ui.texteditor.ITextEditor
 import org.eclipse.ui.texteditor.MarkerUtilities
 import org.scala.tools.eclipse.search.Occurrence
+import org.scala.tools.eclipse.search.SemanticSearchPlugin
+import org.eclipse.core.runtime.IPath
+import org.eclipse.core.runtime.Path
 
 /**
  * Contains various small helper methods that makes it easier to
@@ -48,7 +50,22 @@ object Helper {
       case x => throw new Exception("Unknown editor %s".format(x))
     }
   }
+  
+  def getFileOfPath(p: String): IFile = {
+    val path: IPath = new Path(p)
+    val f = SemanticSearchPlugin.root.getFile(path);
+    if (f == null || f.getRawLocation() == null) {
+      SemanticSearchPlugin.root.getFileForLocation(path);
+    } else f
+  }
 
+  def getSelection(editor: ScalaSourceFileEditor): Option[ITextSelection] = {
+    editor.getSelectionProvider().getSelection() match {
+      case sel: ITextSelection => Some(sel)
+      case _ => None
+    }
+  }
+  
   def getSelectedMethod(editor: ScalaSourceFileEditor)(otherwise: => Unit): Option[IMethod] = {
     val r = editor.getSelectionProvider().getSelection() match {
       case sel: ITextSelection => {
@@ -77,9 +94,9 @@ object MarkerHelper extends HasLogger {
     val marker = file.createMarker(NewSearchUI.SEARCH_MARKER)
     marker.setAttribute(IMarker.TRANSIENT, true)
     marker.setAttribute(IMarker.MESSAGE, occurrence.word)
-    val line = occurrence.line
-    val pos = document.getLineOffset(line-1)
-    val charStart = pos + occurrence.offset - 1
+
+    val line = document.getLineOfOffset(occurrence.offset)
+    val charStart = occurrence.offset 
     val charEnd = charStart + occurrence.word.length
     MarkerUtilities.setLineNumber(marker, line)
     MarkerUtilities.setCharStart(marker, charStart)

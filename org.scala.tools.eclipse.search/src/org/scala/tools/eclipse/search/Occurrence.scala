@@ -11,11 +11,10 @@ case class Occurrence(
     word: String,
     path: String,
     fileName: String,
-    line: Int,
-    offset: Int,
+    offset: Int, /* char offset from beginning of file */
     occurrenceKind: OccurrenceKind,
     entity: EntityKind) {
-  
-  override def toString = "%s in %s on (%s,%s) %s".format(word, fileName, line.toString, offset.toString, occurrenceKind.toString) 
-  
+
+  override def toString = "%s in %s at char %s %s".format(word, fileName, offset.toString, occurrenceKind.toString) 
+
 }

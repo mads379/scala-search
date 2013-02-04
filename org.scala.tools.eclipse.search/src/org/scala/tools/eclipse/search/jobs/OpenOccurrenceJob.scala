@@ -28,15 +28,7 @@ class OpenOccurrenceJob(occurrence: Occurrence, page: IWorkbenchPage) extends Jo
   // We have all of this in the constructor because it's accessing objects that
   // can only be accessed on the UI thread.
   //
-  logger.debug("path is : "+occurrence.path)
-  val path: IPath = new Path(occurrence.path)
-
-  val file: IFile = {
-    val f = SemanticSearchPlugin.root.getFile(path);
-    if (file == null || file.getRawLocation() == null) {
-      SemanticSearchPlugin.root.getFileForLocation(path);
-    } else f
-  }
+  val file: IFile = Helper.getFileOfPath(occurrence.path)
   val input = new FileEditorInput(file);
   val desc = IDE.getEditorDescriptor(occurrence.fileName)
   val part = IDE.openEditor(page, input, desc.getId())
