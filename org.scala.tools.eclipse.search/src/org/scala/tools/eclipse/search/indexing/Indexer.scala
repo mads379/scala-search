@@ -8,6 +8,7 @@ import org.scala.tools.eclipse.search.Occurrence
 import org.scala.tools.eclipse.search.OccurrenceCollector
 import org.eclipse.jdt.internal.core.JavaProject
 import scala.tools.eclipse.ScalaPlugin
+import org.eclipse.core.resources.IFile
 
 class Indexer(memoryIndex: MemoryIndex) extends HasLogger {
 
@@ -21,13 +22,15 @@ class Indexer(memoryIndex: MemoryIndex) extends HasLogger {
 
   def indexProject(proj: ScalaProject) = {
     logger.debug("Indexing project %s".format(proj))
-    proj.allSourceFiles.foreach {  file =>
-      val path = file.getFullPath().toOSString()
-      ScalaSourceFile.createFromPath(path).foreach { cu =>
-        OccurrenceCollector.findOccurrences(cu).fold(
-          fail => logger.debug(fail),
-          occurrences => addOccurrencesInFile(path, occurrences))
-      }
+    proj.allSourceFiles.foreach {  indexFile }
+  }
+
+  def indexFile(file: IFile) = {
+    val path = file.getFullPath().toOSString()
+    ScalaSourceFile.createFromPath(path).foreach { cu =>
+      OccurrenceCollector.findOccurrences(cu).fold(
+        fail => logger.debug(fail),
+        occurrences => addOccurrencesInFile(path, occurrences))
     }
   }
 

@@ -8,16 +8,30 @@ import org.eclipse.core.resources.ResourcesPlugin
 import org.scala.tools.eclipse.search.indexing.MemoryIndex
 import org.scala.tools.eclipse.search.ui.SearchViewContentProvider
 import org.eclipse.jface.viewers.TreeViewer
+import org.eclipse.core.resources.IFile
+import org.scala.tools.eclipse.search.jobs.UpdateIndexJob
+import org.scala.tools.eclipse.search.jobs.IndexingJob
+import org.eclipse.core.runtime.jobs.Job
+import org.eclipse.core.resources.WorkspaceJob
 
 /**
  * Controls the plugins life-cycle.
  */
 class SemanticSearchPlugin extends AbstractUIPlugin with HasLogger {
 
+  import SemanticSearchPlugin._
+
   override def start(context: BundleContext) {
     logger.debug("Starting semantic search plugin")
 
-    SemanticSearchPlugin.indexer.indexWorkspace(SemanticSearchPlugin.root)
+    // Initial index of workspace
+    initialIndexJob.schedule()
+    initialIndexJob.setPriority(Job.LONG) // long running job
+
+    // Background job that periodically update the index.
+    val indexUpdateJob = new UpdateIndexJob()
+    indexUpdateJob.setSystem(true)
+    indexUpdateJob.schedule(updateInterval)
   }
 
   override def stop(context: BundleContext) {
@@ -28,6 +42,7 @@ class SemanticSearchPlugin extends AbstractUIPlugin with HasLogger {
 
 object SemanticSearchPlugin {
 
+  final val initialIndexJob = new IndexingJob()
   final val index = new MemoryIndex
   final val indexer = new Indexer(index)
 
@@ -41,5 +56,18 @@ object SemanticSearchPlugin {
   def getPluginId(): String = PLUGIN_ID
 
   def root = ResourcesPlugin.getWorkspace().getRoot()
+
+  def isIndexable(file: IFile): Boolean = {
+    // TODO: At some point we want to make the acceptable files extensible.
+    // such that frameworks such as play can have their template files indexed.
+    file.getFileExtension() == "scala"
+  }
+
+  def isInitialIndexRunning: Boolean = {
+    (initialIndexJob.getState() == org.eclipse.core.runtime.jobs.Job.WAITING || 
+     initialIndexJob.getState() == org.eclipse.core.runtime.jobs.Job.RUNNING)
+  }
+
+  def updateInterval: Long = 5000
 
 }
