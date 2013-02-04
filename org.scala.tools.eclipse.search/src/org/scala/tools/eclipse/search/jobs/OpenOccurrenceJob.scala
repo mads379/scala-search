@@ -1,20 +1,23 @@
 package org.scala.tools.eclipse.search.jobs
 
-import org.scala.tools.eclipse.search.Occurrence
-import org.eclipse.ui.IWorkbenchPage
-import org.eclipse.core.resources.IFile
-import org.scala.tools.eclipse.search.SemanticSearchPlugin
-import org.eclipse.ui.part.FileEditorInput
-import org.eclipse.core.runtime.IProgressMonitor
-import org.eclipse.ui.ide.IDE
-import org.eclipse.core.runtime.IStatus
-import org.scala.tools.eclipse.search.ui.MarkerHelper
-import org.eclipse.core.runtime.Status
-import org.scala.tools.eclipse.search.ui.Helper
-import org.eclipse.core.runtime.jobs.Job
 import scala.tools.eclipse.logging.HasLogger
-import org.eclipse.core.runtime.Path
+
+import org.eclipse.core.resources.IFile
+import org.eclipse.core.resources.IResource
 import org.eclipse.core.runtime.IPath
+import org.eclipse.core.runtime.IProgressMonitor
+import org.eclipse.core.runtime.IStatus
+import org.eclipse.core.runtime.Path
+import org.eclipse.core.runtime.Status
+import org.eclipse.core.runtime.jobs.Job
+import org.eclipse.search.ui.NewSearchUI
+import org.eclipse.ui.IWorkbenchPage
+import org.eclipse.ui.ide.IDE
+import org.eclipse.ui.part.FileEditorInput
+import org.scala.tools.eclipse.search.Occurrence
+import org.scala.tools.eclipse.search.SemanticSearchPlugin
+import org.scala.tools.eclipse.search.ui.Helper
+import org.scala.tools.eclipse.search.ui.MarkerHelper
 
 /**
  * Needs to be created on the UI thread.
@@ -34,7 +37,6 @@ class OpenOccurrenceJob(occurrence: Occurrence, page: IWorkbenchPage) extends Jo
       SemanticSearchPlugin.root.getFileForLocation(path);
     } else f
   }
-
   val input = new FileEditorInput(file);
   val desc = IDE.getEditorDescriptor(occurrence.fileName)
   val part = IDE.openEditor(page, input, desc.getId())
@@ -42,6 +44,7 @@ class OpenOccurrenceJob(occurrence: Occurrence, page: IWorkbenchPage) extends Jo
   val document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
 
   def run(monitor: IProgressMonitor): IStatus = {
+    file.deleteMarkers(NewSearchUI.SEARCH_MARKER, true, IResource.DEPTH_INFINITE)
     val mark = MarkerHelper.createMarker(occurrence, document, file, editor)
     MarkerHelper.goToMarker(mark, editor)
     Status.OK_STATUS

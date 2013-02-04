@@ -1,20 +1,25 @@
 package org.scala.tools.eclipse.search.ui
 
-import org.eclipse.ui.IEditorInput
-import org.eclipse.ui.IEditorPart
-import org.eclipse.ui.part.MultiPageEditorPart
-import scala.tools.eclipse.ScalaSourceFileEditor
-import org.eclipse.ui.texteditor.ITextEditor
+import scala.Array.canBuildFrom
 import scala.tools.eclipse.ScalaEditor
-import org.scala.tools.eclipse.search.Occurrence
-import org.eclipse.jface.text.IDocument
+import scala.tools.eclipse.ScalaSourceFileEditor
+import scala.tools.eclipse.javaelements.ScalaCompilationUnit
+import scala.tools.eclipse.logging.HasLogger
+
 import org.eclipse.core.resources.IFile
 import org.eclipse.core.resources.IMarker
+import org.eclipse.jdt.core.IMethod
+import org.eclipse.jface.text.IDocument
+import org.eclipse.jface.text.ITextSelection
 import org.eclipse.search.ui.NewSearchUI
-import scala.tools.eclipse.logging.HasLogger
-import org.eclipse.ui.texteditor.MarkerUtilities
-import org.eclipse.ui.ide.IGotoMarker
+import org.eclipse.ui.IEditorInput
+import org.eclipse.ui.IEditorPart
 import org.eclipse.ui.ide.IDE
+import org.eclipse.ui.ide.IGotoMarker
+import org.eclipse.ui.part.MultiPageEditorPart
+import org.eclipse.ui.texteditor.ITextEditor
+import org.eclipse.ui.texteditor.MarkerUtilities
+import org.scala.tools.eclipse.search.Occurrence
 
 /**
  * Contains various small helper methods that makes it easier to
@@ -42,6 +47,23 @@ object Helper {
       case ed: ITextEditor => ed
       case x => throw new Exception("Unknown editor %s".format(x))
     }
+  }
+
+  def getSelectedMethod(editor: ScalaSourceFileEditor)(otherwise: => Unit): Option[IMethod] = {
+    val r = editor.getSelectionProvider().getSelection() match {
+      case sel: ITextSelection => {
+        val scu: ScalaCompilationUnit = editor.getInteractiveCompilationUnit.asInstanceOf[ScalaCompilationUnit]
+        scu.codeSelect(scu, sel.getOffset(), sel.getLength(), null /* TODO: how do I get WorkingCopyOwner*/).headOption.flatMap {
+          case x: IMethod => Some(x)
+          case _ => None
+        }
+      }
+      case _ => None
+    }
+    if (r.isEmpty) {
+      otherwise
+    }
+    r
   }
   
 }
