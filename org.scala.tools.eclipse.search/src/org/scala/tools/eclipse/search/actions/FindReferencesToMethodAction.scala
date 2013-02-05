@@ -25,6 +25,7 @@ import scala.tools.eclipse.javaelements.ScalaCompilationUnit
 import scala.reflect.internal.util.SourceFile
 import scala.tools.eclipse.ScalaPlugin
 import scala.tools.eclipse.ScalaPresentationCompiler
+import org.scala.tools.eclipse.search.{ ErrorHandlingOption }
 
 class FindReferencesToMethodAction
   extends IWorkbenchWindowActionDelegate
@@ -40,18 +41,17 @@ class FindReferencesToMethodAction
 
   def run(action: IAction) {
     for {
-      editor <- scalaEditor { error("Active editor wasn't a Scala editor") }
-      selection <- Helper.getSelection(editor)
-      method <- Helper.getSelectedMethod(editor) { error("You need to have a method selected") }
+      editor    <- scalaEditor ifEmpty error("Active editor wasn't a Scala editor")
+      selection <- Helper.getSelection(editor) ifEmpty error("You need to have a selection")
     } yield {
-      val index = SemanticSearchPlugin.index
-      val occurrences = index.lookup(method.getElementName())
       editor.getInteractiveCompilationUnit.doWithSourceFile { (sf, pc) =>
         var r = new Response[pc.Tree]
         pc.askTypeAt(new OffsetPosition(sf, selection.getOffset()), r)
         r.get.fold(
             tree => {
-              val symbol = pc.ask { () => tree.symbol } 
+              val symbol = pc.ask { () => tree.symbol }
+              val index = SemanticSearchPlugin.index
+              val occurrences = index.lookup(symbol.nameString)
               val exact = exactOccurrences(pc)(tree.symbol, occurrences)
               val results: Map[String, Seq[Occurrence]] = exact.groupBy(_.fileName)
               SemanticSearchPlugin.resultsView.setInput(results)
@@ -66,7 +66,10 @@ class FindReferencesToMethodAction
   private def exactOccurrences(pc: ScalaPresentationCompiler)
                       (symbol: pc.Symbol, occurrences: Seq[Occurrence]): Seq[Occurrence] = {
     occurrences.filter { occurrence =>
-      symbol == getSymbolOfOccurrence(pc)(occurrence)
+      val other = getSymbolOfOccurrence(pc)(occurrence)
+      val eq = symbol == other 
+      logger.debug("comparing %s with %s , was %s".format(symbol.nameString, other.nameString, eq))
+      eq
     }
   }
 
@@ -78,7 +81,7 @@ class FindReferencesToMethodAction
       proj <- projOpt
       ssf <- ssfOpt
     } yield {
-      proj.withSourceFile(ssf){ (cu, _) => 
+      proj.withSourceFile(ssf){ (cu, _) =>
         var r = new Response[pc.Tree]
         val pos = new OffsetPosition(cu, occurrence.offset)
         pc.askTypeAt(pos, r)
@@ -88,7 +91,7 @@ class FindReferencesToMethodAction
               logger.debug(err)
               pc.NoSymbol
             }) : pc.Symbol
-      }(pc.NoSymbol) 
+      }(pc.NoSymbol)
     }
     symbolOpt.getOrElse(pc.NoSymbol)
   }
@@ -97,7 +100,7 @@ class FindReferencesToMethodAction
     editor.getInteractiveCompilationUnit.scalaProject
   }
 
-  private def scalaEditor(otherwise: => Unit): Option[ScalaSourceFileEditor] = {
+  private def scalaEditor: Option[ScalaSourceFileEditor] = {
     for {
       page <- Option(window.getActivePage)
       editor <- Option(page.getActiveEditor())

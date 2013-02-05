@@ -65,24 +65,6 @@ object Helper {
       case _ => None
     }
   }
-  
-  def getSelectedMethod(editor: ScalaSourceFileEditor)(otherwise: => Unit): Option[IMethod] = {
-    val r = editor.getSelectionProvider().getSelection() match {
-      case sel: ITextSelection => {
-        val scu: ScalaCompilationUnit = editor.getInteractiveCompilationUnit.asInstanceOf[ScalaCompilationUnit]
-        scu.codeSelect(scu, sel.getOffset(), sel.getLength(), null /* TODO: how do I get WorkingCopyOwner*/).headOption.flatMap {
-          case x: IMethod => Some(x)
-          case _ => None
-        }
-      }
-      case _ => None
-    }
-    if (r.isEmpty) {
-      otherwise
-    }
-    r
-  }
-  
 }
 
 /**
