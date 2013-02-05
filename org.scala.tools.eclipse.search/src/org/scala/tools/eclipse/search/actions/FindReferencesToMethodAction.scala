@@ -53,7 +53,7 @@ class FindReferencesToMethodAction
               val index = SemanticSearchPlugin.index
               val occurrences = index.lookup(symbol.nameString)
               val exact = exactOccurrences(pc)(tree.symbol, occurrences)
-              val results: Map[String, Seq[Occurrence]] = exact.groupBy(_.fileName)
+              val results: Map[String, Seq[Occurrence]] = exact.groupBy(_.file.file.file.getName())
               SemanticSearchPlugin.resultsView.setInput(results)
             },
             err => {
@@ -74,26 +74,17 @@ class FindReferencesToMethodAction
   }
 
   private def getSymbolOfOccurrence(pc: ScalaPresentationCompiler)(occurrence: Occurrence): pc.Symbol = {
-    val file = Helper.getFileOfPath(occurrence.path)
-    val projOpt = ScalaPlugin.plugin.asScalaProject(file.getProject)
-    val ssfOpt = ScalaSourceFile.createFromPath(file.getFullPath().toOSString())
-    val symbolOpt: Option[pc.Symbol] = for {
-      proj <- projOpt
-      ssf <- ssfOpt
-    } yield {
-      proj.withSourceFile(ssf){ (cu, _) =>
-        var r = new Response[pc.Tree]
-        val pos = new OffsetPosition(cu, occurrence.offset)
-        pc.askTypeAt(pos, r)
-        r.get.fold(
-            tree => tree.symbol,
-            err => {
-              logger.debug(err)
-              pc.NoSymbol
-            }) : pc.Symbol
-      }(pc.NoSymbol)
-    }
-    symbolOpt.getOrElse(pc.NoSymbol)
+    occurrence.file.withSourceFile{ (cu, _) =>
+      var r = new Response[pc.Tree]
+      val pos = new OffsetPosition(cu, occurrence.offset)
+      pc.askTypeAt(pos, r)
+      r.get.fold(
+          tree => tree.symbol,
+          err => {
+            logger.debug(err)
+            pc.NoSymbol
+          }) : pc.Symbol
+    }(pc.NoSymbol)
   }
 
   def getProjectOfEditor(editor: ScalaSourceFileEditor): ScalaProject = {

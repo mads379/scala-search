@@ -22,8 +22,6 @@ object OccurrenceCollector extends HasLogger {
   private def findOccurrences(pc: ScalaPresentationCompiler)
                              (file: ScalaSourceFile, tree: pc.Tree): Seq[Occurrence] = {
     import pc._
-    val fileName = file.file.file.getName()
-    val path = file.file.file.getAbsolutePath()
 
     val occurrences = new scala.collection.mutable.ListBuffer[Occurrence]()
     val traverser = new Traverser {
@@ -32,27 +30,27 @@ object OccurrenceCollector extends HasLogger {
         tree match {
           // Direct invocations of methods
           case Apply(t@Ident(fun), args) if !isSynthetic(pc)(t, fun.toString) =>
-            occurrences += Occurrence(fun.toString, path, fileName, t.pos.point, Reference, Method)
+            occurrences += Occurrence(fun.toString, file, t.pos.point, Reference, Method)
             args.foreach { super.traverse } // recurse on the arguments
 
           // E.g. foo.bar()
           case Apply(t@Select(rest, name), args) if !isSynthetic(pc)(t, name.toString) =>
-            occurrences += Occurrence(name.toString, path, fileName, t.pos.point, Reference, Method)
+            occurrences += Occurrence(name.toString, file, t.pos.point, Reference, Method)
             args.foreach { super.traverse } // recurse on the arguments
             super.traverse(rest) // We recurse in the case of chained invocations, foo.bar().baz()
 
           // Invoking a method w/o an argument doesn't result in apply, just an Ident node.
           case t@Ident(fun) if !isSynthetic(pc)(t, fun.toString) =>
-            occurrences += Occurrence(fun.toString, path, fileName, t.pos.point, Reference, Method) /* Not necessarily a method. */
+            occurrences += Occurrence(fun.toString, file, t.pos.point, Reference, Method) /* Not necessarily a method. */
 
           // Invoking a method on an instance w/o an argument doesn't result in an Apply node, simply a Select node.
           case t@Select(rest,name) if !isSynthetic(pc)(t, name.toString) =>
-            occurrences += Occurrence(name.toString, path, fileName, t.pos.point, Reference, Method) /* Not necessarily a method. */
+            occurrences += Occurrence(name.toString, file, t.pos.point, Reference, Method) /* Not necessarily a method. */
             rest.foreach { super.traverse } // recurse in the case of chained selects: foo.baz.bar
 
           // Method definitions
           case t@DefDef(_, name, _, _, _, body) if !isSynthetic(pc)(t, name.toString) =>
-            occurrences += Occurrence(name.toString, path, fileName, t.pos.point, Declaration, Method)
+            occurrences += Occurrence(name.toString, file, t.pos.point, Declaration, Method)
             super.traverse(body) // We recurse in the case of chained invocations, foo.bar().baz()
 
           case _ => super.traverse(tree)
