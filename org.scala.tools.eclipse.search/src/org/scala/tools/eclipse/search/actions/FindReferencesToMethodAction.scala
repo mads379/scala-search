@@ -24,6 +24,7 @@ import scala.tools.eclipse.javaelements.ScalaCompilationUnit
 import scala.tools.eclipse.javaelements.ScalaCompilationUnit
 import scala.reflect.internal.util.SourceFile
 import scala.tools.eclipse.ScalaPlugin
+import scala.tools.eclipse.ScalaPresentationCompiler
 
 class FindReferencesToMethodAction
   extends IWorkbenchWindowActionDelegate
@@ -45,9 +46,51 @@ class FindReferencesToMethodAction
     } yield {
       val index = SemanticSearchPlugin.index
       val occurrences = index.lookup(method.getElementName())
-      val results: Map[String, Seq[Occurrence]] = occurrences.groupBy(_.fileName)
-      SemanticSearchPlugin.resultsView.setInput(results)
+      editor.getInteractiveCompilationUnit.doWithSourceFile { (sf, pc) =>
+        var r = new Response[pc.Tree]
+        pc.askTypeAt(new OffsetPosition(sf, selection.getOffset()), r)
+        r.get.fold(
+            tree => {
+              val symbol = pc.ask { () => tree.symbol } 
+              val exact = exactOccurrences(pc)(tree.symbol, occurrences)
+              val results: Map[String, Seq[Occurrence]] = exact.groupBy(_.fileName)
+              SemanticSearchPlugin.resultsView.setInput(results)
+            },
+            err => {
+              error(err.getStackTraceString)
+            })
+      }
     }
+  }
+
+  private def exactOccurrences(pc: ScalaPresentationCompiler)
+                      (symbol: pc.Symbol, occurrences: Seq[Occurrence]): Seq[Occurrence] = {
+    occurrences.filter { occurrence =>
+      symbol == getSymbolOfOccurrence(pc)(occurrence)
+    }
+  }
+
+  private def getSymbolOfOccurrence(pc: ScalaPresentationCompiler)(occurrence: Occurrence): pc.Symbol = {
+    val file = Helper.getFileOfPath(occurrence.path)
+    val projOpt = ScalaPlugin.plugin.asScalaProject(file.getProject)
+    val ssfOpt = ScalaSourceFile.createFromPath(file.getFullPath().toOSString())
+    val symbolOpt: Option[pc.Symbol] = for {
+      proj <- projOpt
+      ssf <- ssfOpt
+    } yield {
+      proj.withSourceFile(ssf){ (cu, _) => 
+        var r = new Response[pc.Tree]
+        val pos = new OffsetPosition(cu, occurrence.offset)
+        pc.askTypeAt(pos, r)
+        r.get.fold(
+            tree => tree.symbol,
+            err => {
+              logger.debug(err)
+              pc.NoSymbol
+            }) : pc.Symbol
+      }(pc.NoSymbol) 
+    }
+    symbolOpt.getOrElse(pc.NoSymbol)
   }
 
   def getProjectOfEditor(editor: ScalaSourceFileEditor): ScalaProject = {
