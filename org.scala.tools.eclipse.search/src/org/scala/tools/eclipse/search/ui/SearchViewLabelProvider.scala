@@ -18,10 +18,10 @@ class SearchViewLabelProvider extends StyledCellLabelProvider {
     val elem: Object = cell.getElement()
     val text = new StyledString
 
-    if (elem.isInstanceOf[String]) {
-      val str = elem.asInstanceOf[String]
+    if (elem.isInstanceOf[Tuple2[_, _]]) {
+      val (str, count) = elem.asInstanceOf[Tuple2[String, Int]]
       text.append(str)
-      text.append(" (%s)".format(0.toString), StyledString.COUNTER_STYLER)
+      text.append(" (%s)".format(count), StyledString.COUNTER_STYLER)
       cell.setImage(PlatformUI.getWorkbench().getSharedImages().getImage(ISharedImages.IMG_OBJ_FILE))
     } else {
       val occurrence = elem.asInstanceOf[Occurrence]

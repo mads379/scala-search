@@ -29,12 +29,12 @@ class SearchViewContentProvider extends ITreeContentProvider with HasLogger {
   }
 
   override def getElements(inputElement: Object): Array[Object] = {
-    data.keys.toArray
+    data.map { case (str, seq) => (str, seq.size) }.toArray
   }
 
   override def getChildren(parentElement: Object): Array[Object] = {
     parentElement match {
-      case x: String => data.get(x).map(_.toArray.map(_.asInstanceOf[Object])).getOrElse( Array[Object]() )
+      case (x: String, _) => data.get(x).map(_.toArray.map(_.asInstanceOf[Object])).getOrElse( Array[Object]() )
       case _ => Array[Object]()
     }
   }
@@ -42,7 +42,7 @@ class SearchViewContentProvider extends ITreeContentProvider with HasLogger {
   override def getParent(element: Object): Object = null
 
   override def hasChildren(element: Object): Boolean = element match {
-    case x: String => data.get(x).fold(false)(_ => true)
+    case (x: String, _) => data.get(x).fold(false)(_ => true)
     case _ => false
   }
 }
