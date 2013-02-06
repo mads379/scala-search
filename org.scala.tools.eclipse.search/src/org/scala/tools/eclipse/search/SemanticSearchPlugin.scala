@@ -44,8 +44,9 @@ class SemanticSearchPlugin extends AbstractUIPlugin with HasLogger {
 object SemanticSearchPlugin {
 
   final val initialIndexJob = new IndexingJob()
-  final val index = new MemoryIndex
+  private final val index = new MemoryIndex
   final val indexer = new Indexer(index)
+  final val entityFinder = new EntityFinder(index)
 
   /* It seems that you have to go through the view to update the content so
    * we need a handle on the view, but as the platform is responsible for

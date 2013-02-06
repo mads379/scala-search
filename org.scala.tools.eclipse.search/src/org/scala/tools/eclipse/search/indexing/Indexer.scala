@@ -22,16 +22,20 @@ class Indexer(memoryIndex: MemoryIndex) extends HasLogger {
 
   def indexProject(proj: ScalaProject) = {
     logger.debug("Indexing project %s".format(proj))
-    proj.allSourceFiles.foreach {  indexFile }
+    proj.allSourceFiles.foreach { indexFile }
   }
 
-  def indexFile(file: IFile) = {
+  def indexFile(file: IFile): Unit = {
     val path = file.getFullPath().toOSString()
     ScalaSourceFile.createFromPath(path).foreach { cu =>
-      OccurrenceCollector.findOccurrences(cu).fold(
-        fail => logger.debug(fail),
-        occurrences => addOccurrencesInFile(path, occurrences))
+        indexFile(cu)
     }
+  }
+
+  def indexFile(cu: ScalaSourceFile): Unit = {
+    OccurrenceCollector.findOccurrences(cu).fold(
+      fail => logger.debug(fail),
+      occurrences => addOccurrencesInFile(cu.file.file.getAbsolutePath(), occurrences))
   }
 
   private def addOccurrencesInFile(file: String, occurrences: Seq[Occurrence]) = {

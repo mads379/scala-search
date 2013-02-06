@@ -5,13 +5,12 @@ import scala.tools.eclipse.ScalaPresentationCompiler
 import scala.tools.nsc.interactive.Response
 import scala.reflect.internal.util.OffsetPosition
 import scala.tools.eclipse.logging.HasLogger
+import org.scala.tools.eclipse.search.indexing.MemoryIndex
 
 /**
  * Allows you to search and find entities in Scala projects
  */
-object EntityFinder extends HasLogger {
-
-  private val index = SemanticSearchPlugin.index
+class EntityFinder(index: MemoryIndex) extends HasLogger {
 
   /**
    * Find all occurrence of the entity `sym` is representing.
@@ -24,7 +23,7 @@ object EntityFinder extends HasLogger {
   private def exactOccurrences(symbol: Sym, occurrences: Seq[Occurrence]): Seq[Occurrence] = {
     occurrences.filter { occurrence =>
       (for {
-        other <- getSymbolOfOccurrence(occurrence)
+        other <- getSymbolOfOccurrence(occurrence) ifEmpty logger.debug("Couldn't get symbol of occurrence")
       } yield {
         symbol == other
       }) getOrElse (false)
@@ -33,6 +32,7 @@ object EntityFinder extends HasLogger {
 
   private def getSymbolOfOccurrence(occurrence: Occurrence): Option[Sym] = {
     occurrence.file.withSourceFile { (cu, pc) =>
+      occurrence.file.reload /* Probably faster to "Batch" reload the files. */
       var r = new Response[pc.Tree]
       val pos = new OffsetPosition(cu, occurrence.offset)
       pc.askTypeAt(pos, r)

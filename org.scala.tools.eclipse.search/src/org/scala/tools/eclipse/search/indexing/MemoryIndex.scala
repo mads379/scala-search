@@ -41,4 +41,8 @@ class MemoryIndex extends HasLogger {
       index.getOrElse(word, Buffer())
     }.toSeq
   }
+  
+  def all: Seq[Occurrence]= lock.synchronized {
+    files.values.flatMap(_.values).flatten.toSeq
+  }
 }
