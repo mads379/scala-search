@@ -23,7 +23,9 @@ object SymbolAbstraction extends HasLogger {
 
   type Type = String // TODO: Figure out how to deal with types.
 
-  sealed abstract class Sym
+  sealed abstract trait Sym {
+    val name: String
+  } 
 
   case class MethodSym(
       val name: String,

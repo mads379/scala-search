@@ -28,6 +28,8 @@ import scala.tools.eclipse.ScalaPresentationCompiler
 import org.scala.tools.eclipse.search.{ ErrorHandlingOption }
 import org.scala.tools.eclipse.search.SymbolAbstraction.Sym
 import org.scala.tools.eclipse.search.SymbolAbstraction
+import org.scala.tools.eclipse.search.EntityFinder
+import org.eclipse.jface.text.ITextSelection
 
 class FindReferencesToMethodAction
   extends IWorkbenchWindowActionDelegate
@@ -45,49 +47,21 @@ class FindReferencesToMethodAction
     for {
       editor    <- scalaEditor ifEmpty error("Active editor wasn't a Scala editor")
       selection <- Helper.getSelection(editor) ifEmpty error("You need to have a selection")
+      symbol    <- symbolAtSelection(editor, selection) ifEmpty error("Couldn't figure out what you've selected")
     } yield {
-      editor.getInteractiveCompilationUnit.doWithSourceFile { (sf, pc) =>
-        var r = new Response[pc.Tree]
-        pc.askTypeAt(new OffsetPosition(sf, selection.getOffset()), r)
-        r.get.fold(
-            tree => {
-              val symbol = pc.ask { () => tree.symbol }
-              val index = SemanticSearchPlugin.index
-              val occurrences = index.lookup(symbol.nameString)
-              val exact = exactOccurrences(pc)(SymbolAbstraction.fromSymbol(pc)(tree.symbol), occurrences)
-              val results: Map[String, Seq[Occurrence]] = exact.groupBy(_.file.file.file.getName())
-              SemanticSearchPlugin.resultsView.setInput(results)
-            },
-            err => {
-              error(err.getStackTraceString)
-            })
-      }
+      val exact = EntityFinder.occurrencesOf(symbol)
+      val results = exact.groupBy(_.file.file.file.getName())
+      SemanticSearchPlugin.resultsView.setInput(results)
     }
   }
 
-  private def exactOccurrences(pc: ScalaPresentationCompiler)
-                      (symbol: Option[Sym], occurrences: Seq[Occurrence]): Seq[Occurrence] = {
-    occurrences.filter { occurrence =>
-      (for { 
-        other <- getSymbolOfOccurrence(pc)(occurrence)
-        sym <- symbol
-      } yield {
-        sym == other
-      }) getOrElse(false)
-    }
-  }
-
-  private def getSymbolOfOccurrence(pc: ScalaPresentationCompiler)(occurrence: Occurrence): Option[Sym] = {
-    occurrence.file.withSourceFile{ (cu, _) =>
+  def symbolAtSelection(editor: ScalaSourceFileEditor, selection: ITextSelection): Option[Sym] = {
+    editor.getInteractiveCompilationUnit.withSourceFile { (sf, pc) =>
       var r = new Response[pc.Tree]
-      val pos = new OffsetPosition(cu, occurrence.offset)
-      pc.askTypeAt(pos, r)
+      pc.askTypeAt(new OffsetPosition(sf, selection.getOffset()), r)
       r.get.fold(
-          tree => SymbolAbstraction.fromSymbol(pc)(tree.symbol),
-          err => {
-            logger.debug(err)
-            None
-          }) : Option[Sym]
+        tree => SymbolAbstraction.fromSymbol(pc)(pc.ask { () => tree.symbol}),
+        err => None)
     }(None)
   }
 
