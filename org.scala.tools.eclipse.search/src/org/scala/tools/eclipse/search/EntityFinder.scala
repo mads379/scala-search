@@ -25,6 +25,7 @@ class EntityFinder(index: MemoryIndex) extends HasLogger {
       (for {
         other <- getSymbolOfOccurrence(occurrence) ifEmpty logger.debug("Couldn't get symbol of occurrence")
       } yield {
+        logger.debug("Comparing %s with %s was %s".format(symbol, other, symbol == other))
         symbol == other
       }) getOrElse (false)
     }

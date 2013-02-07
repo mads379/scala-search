@@ -27,10 +27,17 @@ object SymbolAbstraction extends HasLogger {
     val name: String
   } 
 
+  case class ModuleSym(
+      val name: String) extends Sym
+
+  case class ClassSym(
+      val name: String) extends Sym
+
   case class MethodSym(
       val name: String,
       val args: Seq[Seq[Argument]], /* many parameter lists */
-      val returnType: Type
+      val returnType: Type,
+      val owner: Sym                /* class or module symbol */
   ) extends Sym
 
   case class Argument(
@@ -44,26 +51,50 @@ object SymbolAbstraction extends HasLogger {
   def fromSymbol(pc: ScalaPresentationCompiler)(sym: pc.Symbol): Option[Sym] = {
     import pc._
 
-    def fromMethodSymbol(sym: MethodSymbol): Sym = {
+    def fromMethodSymbol(sym: MethodSymbol): Option[Sym] = {
       val arguments = ask { () => sym.paramss.map { (syms: List[Symbol]) =>
         syms.map { s => Argument(s.nameString, s.tpe.toLongString) }
       }}
       val (name, rtpe) = ask { () =>
         (sym.nameString, sym.returnType.toLongString)
       }
-      MethodSym(name, arguments, rtpe)
+      val ownerSymbol = {
+        ask { () => sym.owner } 
+      }
+      val owner = fromSymbol(pc)(ownerSymbol)
+      logger.debug("converting MethodSymbol %s".format(name))
+      owner.map { ow => 
+        MethodSym(name, arguments, rtpe, ow)
+      } ifEmpty {
+        logger.debug("Couldn't convert owner %s".format(ownerSymbol))
+      }
     }
 
     def fromTermSymbol(sym: TermSymbol): Option[Sym] = {
       fromSymbol(pc)(ask { () => sym.referenced })
     }
 
-    sym match {
-      case sym: MethodSymbol => Some(fromMethodSymbol(sym))
+    def fromModuleSymbol(sym: ModuleSymbol): Option[Sym] = {
+      val name = ask { () => sym.nameString }
+      logger.debug("converting ModuleSymbol %s".format(name))
+      Some(ModuleSym(name))
+    }
 
-      case sym: ModuleSymbol =>
-        logger.debug("Found a ModuleSymbol")
-        None
+    def fromClassSymbol(sym: ClassSymbol): Option[Sym] = {
+      val name = ask { () => sym.nameString }
+      logger.debug("converting ClassSymbol %s".format(name))
+      Some(ClassSym(name))
+    }
+
+    def fromModuleClassSymbol(sym: ModuleClassSymbol): Option[Sym] = {
+      val name = ask { () => sym.nameString }
+      logger.debug("converting ModuleClassSymbol %s".format(name))
+      Some(ModuleSym(name))
+    }
+
+    sym match {
+      case sym: MethodSymbol => fromMethodSymbol(sym)
+      case sym: ModuleSymbol => fromModuleSymbol(sym)
 
       case sym: FreeTermSymbol =>
         logger.debug("Found a FreeTermSymbol")
@@ -79,13 +110,9 @@ object SymbolAbstraction extends HasLogger {
         logger.debug("Found a TypeSkolem ")
         None
 
-      case sym: ModuleClassSymbol =>
-        logger.debug("Found a ModuleClassSymbol ")
-        None
+      case sym: ModuleClassSymbol => fromModuleClassSymbol(sym)
 
-      case sym: ClassSymbol =>
-        logger.debug("Found a ClassSymbol ")
-        None
+      case sym: ClassSymbol => fromClassSymbol(sym)
 
      case sym: TypeSymbol =>
         logger.debug("Found a TypeSymbol")
