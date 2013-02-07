@@ -25,7 +25,7 @@ object SymbolAbstraction extends HasLogger {
 
   sealed abstract trait Sym {
     val name: String
-  } 
+  }
 
   case class ModuleSym(
       val name: String) extends Sym
@@ -48,7 +48,7 @@ object SymbolAbstraction extends HasLogger {
   /**
    * Converts a Scala compiler symbol to our own symbol abstraction.
    */
-  def fromSymbol(pc: ScalaPresentationCompiler)(sym: pc.Symbol): Option[Sym] = {
+  def fromSymbol(pc: ScalaPresentationCompiler)(symbol: pc.Symbol): Option[Sym] = {
     import pc._
 
     def fromMethodSymbol(sym: MethodSymbol): Option[Sym] = {
@@ -59,11 +59,11 @@ object SymbolAbstraction extends HasLogger {
         (sym.nameString, sym.returnType.toLongString)
       }
       val ownerSymbol = {
-        ask { () => sym.owner } 
+        ask { () => sym.owner }
       }
-      val owner = fromSymbol(pc)(ownerSymbol)
+      val owner = rec(ownerSymbol)
       logger.debug("converting MethodSymbol %s".format(name))
-      owner.map { ow => 
+      owner.map { ow =>
         MethodSym(name, arguments, rtpe, ow)
       } ifEmpty {
         logger.debug("Couldn't convert owner %s".format(ownerSymbol))
@@ -71,7 +71,7 @@ object SymbolAbstraction extends HasLogger {
     }
 
     def fromTermSymbol(sym: TermSymbol): Option[Sym] = {
-      fromSymbol(pc)(ask { () => sym.referenced })
+      rec(ask { () => sym.referenced })
     }
 
     def fromModuleSymbol(sym: ModuleSymbol): Option[Sym] = {
@@ -92,37 +92,45 @@ object SymbolAbstraction extends HasLogger {
       Some(ModuleSym(name))
     }
 
-    sym match {
-      case sym: MethodSymbol => fromMethodSymbol(sym)
-      case sym: ModuleSymbol => fromModuleSymbol(sym)
+    def fromFreeTermSymbol(sym: FreeTermSymbol): Option[Sym] = {
+      logger.debug("Found a FreeTermSymbol")
+      None
+    }
 
-      case sym: FreeTermSymbol =>
-        logger.debug("Found a FreeTermSymbol")
-        None
+    def fromFreeTypeSymbol(sym: FreeTypeSymbol): Option[Sym] = {
+      logger.debug("Found a FreeTypeSymbol")
+      None
+    }
 
-      case sym: FreeTypeSymbol =>
-        logger.debug("Found a FreeTypeSymbol")
-        None
+    def fromTypeSkolem(sym: TypeSkolem): Option[Sym] = {
+      logger.debug("Found a TypeSkolem ")
+      None
+    }
 
-      case sym: TermSymbol => fromTermSymbol(sym)
+    def fromTypeSymbol(sym: TypeSymbol): Option[Sym] = {
+      logger.debug("Found a TypeSymbol")
+      None
+    }
 
-      case sym: TypeSkolem =>
-        logger.debug("Found a TypeSkolem ")
-        None
-
-      case sym: ModuleClassSymbol => fromModuleClassSymbol(sym)
-
-      case sym: ClassSymbol => fromClassSymbol(sym)
-
-     case sym: TypeSymbol =>
-        logger.debug("Found a TypeSymbol")
-        None
-
-      case sym => {
-        logger.debug("Found a symbol type that I couldn't convert " + sym)
-        None
+    def rec(sym: pc.Symbol): Option[Sym] = {
+      sym match {
+        case x: MethodSymbol      => fromMethodSymbol(x)
+        case x: ModuleSymbol      => fromModuleSymbol(x)
+        case x: FreeTermSymbol    => fromFreeTermSymbol(x)
+        case x: FreeTypeSymbol    => fromFreeTypeSymbol(x)
+        case x: TermSymbol        => fromTermSymbol(x)
+        case x: TypeSkolem        => fromTypeSkolem(x)
+        case x: ModuleClassSymbol => fromModuleClassSymbol(x)
+        case x: ClassSymbol       => fromClassSymbol(x)
+        case x: TypeSymbol        => fromTypeSymbol(x)
+        case x => {
+          logger.debug("Found a symbol type that I couldn't convert " + sym)
+          None
+        }
       }
     }
+
+    rec(symbol)
   }
 
 }
