@@ -20,7 +20,7 @@ object OccurrenceCollector extends HasLogger {
   }
 
   private def findOccurrences(pc: ScalaPresentationCompiler)
-                             (file: ScalaSourceFile, tree: pc.Tree): Seq[Occurrence] = {
+                             (file: ScalaSourceFile, t: pc.Tree): Seq[Occurrence] = {
     import pc._
 
     val occurrences = new scala.collection.mutable.ListBuffer[Occurrence]()
@@ -46,7 +46,7 @@ object OccurrenceCollector extends HasLogger {
           // Invoking a method on an instance w/o an argument doesn't result in an Apply node, simply a Select node.
           case t@Select(rest,name) if !isSynthetic(pc)(t, name.toString) =>
             occurrences += Occurrence(name.toString, file, t.pos.point, Reference, Method) /* Not necessarily a method. */
-            rest.foreach { super.traverse } // recurse in the case of chained selects: foo.baz.bar
+            super.traverse(rest) // recurse in the case of chained selects: foo.baz.bar
 
           // Method definitions
           case t@DefDef(_, name, _, _, _, body) if !isSynthetic(pc)(t, name.toString) =>
@@ -57,7 +57,7 @@ object OccurrenceCollector extends HasLogger {
         }
       }
     }
-    traverser.apply(tree)
+    traverser.apply(t)
     occurrences
   }
 
