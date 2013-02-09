@@ -29,21 +29,23 @@ class SemanticSearchPlugin extends AbstractUIPlugin with HasLogger {
     initialIndexJob.setPriority(Job.LONG) // long running job
 
     // Background job that periodically updates the index.
-    val indexUpdateJob = new UpdateIndexJob()
     indexUpdateJob.setSystem(true)
     indexUpdateJob.schedule(updateInterval)
   }
 
   override def stop(context: BundleContext) {
-    // TODO: Should stop any jobs that are still running.
     logger.debug("Stopping semantic search plugin")
+    initialIndexJob.cancel()
+    indexUpdateJob.cancel()
   }
 
 }
 
-object SemanticSearchPlugin {
+object SemanticSearchPlugin extends HasLogger {
 
   final val initialIndexJob = new IndexingJob()
+  final val indexUpdateJob = new UpdateIndexJob()
+
   private final val index = new MemoryIndex
   final val indexer = new Indexer(index)
   final val entityFinder = new EntityFinder(index)
