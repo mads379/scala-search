@@ -14,9 +14,13 @@ class Indexer(memoryIndex: MemoryIndex) extends HasLogger {
 
   def indexWorkspace(root: IWorkspaceRoot) = {
     root.getProjects().foreach { p =>
-      ScalaPlugin.plugin.asScalaProject(p).map( proj => {
-        indexProject(proj)
-      }).getOrElse(logger.debug("Couldn't convert to scala project %s".format(p)))
+      if (p.isOpen()) {
+        ScalaPlugin.plugin.asScalaProject(p).map( proj => {
+          indexProject(proj)
+        }).getOrElse(logger.debug("Couldn't convert to scala project %s".format(p)))
+      } else {
+        logger.debug("Skipping %s because it is closed".format(p))
+      }
     }
   }
 
