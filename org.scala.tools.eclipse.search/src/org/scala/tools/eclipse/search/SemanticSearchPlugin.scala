@@ -74,4 +74,12 @@ object SemanticSearchPlugin extends HasLogger {
 
   def updateInterval: Long = 5000
 
+  /**
+   *  Used to figure out how much data the index contains.
+   */
+  def logIndexStats: Unit = {
+    val occurrences = index.all
+    logger.debug("Index contains %s occurrences".format(occurrences.size))
+  }
+
 }

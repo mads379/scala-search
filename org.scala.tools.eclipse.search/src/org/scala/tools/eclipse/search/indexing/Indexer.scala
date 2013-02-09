@@ -1,4 +1,5 @@
-package org.scala.tools.eclipse.search.indexing
+package org.scala.tools.eclipse.search
+package indexing
 
 import scala.tools.eclipse.ScalaProject
 import scala.tools.eclipse.javaelements.ScalaSourceFile
@@ -26,7 +27,11 @@ class Indexer(memoryIndex: MemoryIndex) extends HasLogger {
 
   def indexProject(proj: ScalaProject) = {
     logger.debug("Indexing project %s".format(proj))
-    proj.allSourceFiles.foreach { indexFile }
+    val elapsed = timed {
+      proj.allSourceFiles.foreach { indexFile }
+    }
+    logger.debug("Indexing %s took %s seconds".format(proj.underlying.getName(), elapsed))
+    SemanticSearchPlugin.logIndexStats // some data about how much was indexed.
   }
 
   def indexFile(file: IFile): Unit = {

@@ -1,4 +1,5 @@
-package org.scala.tools.eclipse.search.jobs
+package org.scala.tools.eclipse.search
+package jobs
 
 import org.eclipse.core.resources.WorkspaceJob
 import org.eclipse.core.runtime.IProgressMonitor
@@ -17,8 +18,10 @@ class IndexingJob extends WorkspaceJob("Initial Indexing Job")
   override def runInWorkspace(monitor: IProgressMonitor): IStatus = {
     // TODO: Should report progress somehow.
     logger.debug("Started Initial Indexing Job")
-    SemanticSearchPlugin.indexer.indexWorkspace(SemanticSearchPlugin.root)
-    logger.debug("Initial Index Should be Done")
+    val elapsed = timed {
+      SemanticSearchPlugin.indexer.indexWorkspace(SemanticSearchPlugin.root)
+    }
+    logger.debug("Initial Index Should be Done. Took %s seconds".format(elapsed))
     Status.OK_STATUS
   }
 
