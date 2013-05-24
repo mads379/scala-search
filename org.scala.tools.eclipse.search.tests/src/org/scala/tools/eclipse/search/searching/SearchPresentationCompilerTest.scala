@@ -215,6 +215,26 @@ class SearchPresentationCompilerTest {
     """} isSameMethod(false)
   }
 
+  @Test def isSameMethod_overloaded {
+    val sourceA = project.create("AskOption.scala") {"""
+      class AskOption {
+        def askO|ption[A](op: () => A): Option[A] = askOption(op, 10000)
+        def askOption[A](op: () => A, timeout: Int): Option[A] = None
+      }
+    """}
+
+    val sourceB = project.create("AskOptionUser.scala") {"""
+      object AskOptionUser {
+        val a = new AskOption
+        a.askO|ption { () =>
+          "hi there"
+        }
+      }
+    """}
+
+    sourceA.isSameMethodAs(sourceB, true)
+  }
+
   @Test
   def isSameMethod_partiallyAppliedMethod {
     project.create("PartiallyApplied.scala") {"""

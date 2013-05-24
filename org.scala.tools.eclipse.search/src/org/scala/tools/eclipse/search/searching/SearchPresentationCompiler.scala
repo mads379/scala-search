@@ -101,7 +101,10 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
                     isSame     <- isSameMethod(symbol, imported)
                     overloaded <- pc.askOption { () => imported.isOverloaded } onEmpty logger.debug("Timed out on overloaded check")
                   } yield {
-                    if (overloaded) PossiblySame else if(isSame) Same else NotSame
+                    if (overloaded) {
+                      logger.debug("It was an overloaded method symbol")
+                      PossiblySame
+                    } else if(isSame) Same else NotSame
                   }) getOrElse NotSame
                 case _ => PossiblySame
               }
