@@ -97,13 +97,12 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
               otherSpc.symbolAt(otherLoc, otherSf) match {
                 case otherSpc.FoundSymbol(symbol2) =>
                   (for {
-                    imported <- importSymbol(otherSpc)(symbol2)
-                    isSame   <- isSameMethod(symbol, imported)
+                    imported   <- importSymbol(otherSpc)(symbol2)
+                    isSame     <- isSameMethod(symbol, imported)
+                    overloaded <- pc.askOption { () => imported.isOverloaded } onEmpty logger.debug("Timed out on overloaded check")
                   } yield {
-                    if(isSame) Same else NotSame
-                  }) getOrElse {
-                    NotSame
-                  }
+                    if (overloaded) PossiblySame else if(isSame) Same else NotSame
+                  }) getOrElse NotSame
                 case _ => PossiblySame
               }
             })(PossiblySame)
