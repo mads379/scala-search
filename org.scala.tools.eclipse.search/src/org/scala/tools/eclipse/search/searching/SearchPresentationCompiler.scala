@@ -46,7 +46,7 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
   def nameOfEntityAt(loc: Location): Option[String] = {
     loc.cu.withSourceFile({ (sf, pc) =>
       symbolAt(loc, sf) match {
-        case FoundSymbol(symbol) => pc.askOption(() => symbol.nameString)
+        case FoundSymbol(symbol) => pc.askOption(() => symbol.decodedName.toString)
         case _ => None
       }
     })(None)
@@ -77,31 +77,31 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
    * both valid names for an invocation of Foo.apply
    */
   def possibleNamesOfEntityAt(loc: Location): Option[List[String]] = {
-    // TODO: Should use decodedName #1001723
 
     def namesForValOrVars(symbol: pc.Symbol) = {
       val (setterName, getterName) = {
         if (pc.nme.isSetterName(symbol.name)) {
-          (symbol.name.toString, pc.nme.setterToGetter(symbol.name.toTermName).toString)
+          (symbol.decodedName, pc.nme.setterToGetter(symbol.name.toTermName).decodedName)
         } else {
-          val n = if(pc.nme.isLocalName(symbol.name)) pc.nme.localToGetter(symbol.name.toTermName).toString
-                  else symbol.name.toString
-          (n, pc.nme.getterToSetter(symbol.name.toTermName).toString)
+          val n = if(pc.nme.isLocalName(symbol.name)) pc.nme.localToGetter(symbol.name.toTermName)
+                  else symbol.name
+          (pc.nme.getterToSetter(symbol.name.toTermName).decodedName, n.decodedName)
         }
       }
-      // If we don't remove whitespace then FinderTest.canFindOccurrencesOfExplicitSetters
-      // will fail.
-      List(setterName.replace(" ",""), getterName.replace(" ",""))
+      // For some weird reason setter names are translated to "name _=" i.e.
+      // there is a space before the _= which isn't present in the index so
+      // we remove it here.
+      List(setterName.toString.replace(" ", ""), getterName.toString)
     }
 
     def namesForApply(symbol: pc.Symbol) = {
-      List(symbol.nameString, symbol.owner.nameString)
+      List(symbol.decodedName.toString, symbol.owner.decodedName.toString)
     }
 
     def names(symbol: pc.Symbol) = pc.askOption { () =>
       if (isValOrVar(symbol)) namesForValOrVars(symbol)
       else if (symbol.nameString == "apply") namesForApply(symbol)
-      else List(symbol.nameString)
+      else List(symbol.decodedName.toString)
     }
 
     loc.cu.withSourceFile({ (sf, _) =>
