@@ -8,6 +8,7 @@ import scala.tools.eclipse.logging.HasLogger
 import org.scala.tools.eclipse.search.indexing.SearchFailure
 import scala.tools.eclipse.javaelements.ScalaSourceFile
 import org.eclipse.core.runtime.IProgressMonitor
+import org.eclipse.core.runtime.NullProgressMonitor
 
 /**
  * Component that provides various methods related to finding Scala entities.
@@ -25,7 +26,7 @@ class Finder(index: Index, reporter: ErrorReporter) extends HasLogger {
    * - Should any errors occur in the Index that we can't handle, the failures
    *   are passed to the `errorHandler` function.
    */
-  def occurrencesOfEntityAt(location: Location, monitor: IProgressMonitor)
+  def occurrencesOfEntityAt(location: Location, monitor: IProgressMonitor = new NullProgressMonitor)
                            (hit: ExactHit => Unit,
                             potentialHit: PotentialHit=> Unit = _ => (),
                             errorHandler: SearchFailure => Unit = _ => ()): Unit = {
