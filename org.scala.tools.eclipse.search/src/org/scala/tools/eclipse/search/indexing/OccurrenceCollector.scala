@@ -74,11 +74,19 @@ object OccurrenceCollector extends HasLogger {
             traverse(rhs)
 
           // Class and Trait definitions
-          case t@ClassDef(_, name, _, Template(supers, ValDef(_,_,selfType,_), body)) =>
+          case ClassDef(_, name, _, Template(supers, ValDef(_,_,selfType,_), body)) =>
             occurrences += Occ(name.decodedName.toString, Declaration)
             isSuper = true
             traverseTrees(supers)
             traverse(selfType)
+            isSuper = false
+            traverseTrees(body)
+
+          // Object definition
+          case ModuleDef(_, name, Template(supers, _, body)) =>
+            occurrences += Occ(name.decodedName.toString, Declaration)
+            isSuper = true
+            traverseTrees(supers)
             isSuper = false
             traverseTrees(body)
 

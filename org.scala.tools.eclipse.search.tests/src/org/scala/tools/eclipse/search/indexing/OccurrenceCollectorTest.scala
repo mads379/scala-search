@@ -179,7 +179,16 @@ class OccurrenceCollectorTest {
       trait B { this: A => }
     """} occurrencesThatMatch { o => o.isInSuperPosition && o.word == "A" }
 
-    assertEquals("Should be 1 occurrence in super position", 1, results.size)
+    assertEquals("Should be 1 occurrence of A in super position", 1, results.size)
+  }
+
+  @Test
+  def indexesObjectSuperTypes = {
+    val results = project.create("IndexesSelfTypesAsTypesInSuperPosition.scala") {"""
+      trait A
+      object B extends A
+    """} occurrencesThatMatch { o => o.isInSuperPosition && o.word == "A" }
+    assertEquals("Should be 1 occurrence of A in super position", 1, results.size)
   }
 
 }
