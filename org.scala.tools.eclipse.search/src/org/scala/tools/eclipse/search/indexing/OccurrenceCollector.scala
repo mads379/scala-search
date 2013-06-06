@@ -4,6 +4,7 @@ import scala.tools.eclipse.ScalaPresentationCompiler
 import scala.tools.eclipse.javaelements.ScalaSourceFile
 import scala.tools.eclipse.logging.HasLogger
 import scala.util._
+import scala.tools.eclipse.javaelements.ScalaCompilationUnit
 
 /**
  * Used to parse and traverse the parse tree of a compilation unit finding
@@ -23,7 +24,7 @@ object OccurrenceCollector extends HasLogger {
    *   be started because of classpath issues)
    *
    */
-  def findOccurrences(file: ScalaSourceFile): Try[Seq[Occurrence]] = {
+  def findOccurrences(file: ScalaCompilationUnit): Try[Seq[Occurrence]] = {
 
     lazy val err: Try[Seq[Occurrence]] = Failure(
         new InvalidPresentationCompilerException(
@@ -38,33 +39,48 @@ object OccurrenceCollector extends HasLogger {
   }
 
   private def findOccurrences(pc: ScalaPresentationCompiler)
-                             (file: ScalaSourceFile, tree: pc.Tree): Seq[Occurrence] = {
+                             (file: ScalaCompilationUnit, tree: pc.Tree): Seq[Occurrence] = {
     import pc._
 
     val occurrences = new scala.collection.mutable.ListBuffer[Occurrence]()
+    var isSuper = false
+
     val traverser = new Traverser {
       override def traverse(t: Tree) {
+
+        // Avoid passing the same arguments all over.
+        val Occ = Occurrence(_: String, file, t.pos.point, _: OccurrenceKind, t.pos.lineContent, isSuper)
+
         t match {
 
           case Ident(name) if !isSynthetic(pc)(t) =>
-            occurrences += Occurrence(name.decodedName.toString, file, t.pos.point, Reference, t.pos.lineContent)
+            occurrences += Occ(name.decodedName.toString, Reference)
 
           case Select(rest,name) if !isSynthetic(pc)(t) =>
-            occurrences += Occurrence(name.decodedName.toString, file, t.pos.point, Reference, t.pos.lineContent)
+            occurrences += Occ(name.decodedName.toString, Reference)
             traverse(rest) // recurse in the case of chained selects: foo.baz.bar
 
           // Method definitions
           case DefDef(mods, name, _, args, _, body) if !isSynthetic(pc)(t) =>
-            occurrences += Occurrence(name.decodedName.toString, file, t.pos.point, Declaration, t.pos.lineContent)
+            occurrences += Occ(name.decodedName.toString, Declaration)
             traverseTrees(mods.annotations)
             traverseTreess(args)
             traverse(body)
 
           // Val's and arguments.
           case ValDef(_, name, tpt, rhs) =>
-            occurrences += Occurrence(name.decodedName.toString, file, t.pos.point, Declaration, t.pos.lineContent)
+            occurrences += Occ(name.decodedName.toString, Declaration)
             traverse(tpt)
             traverse(rhs)
+
+          // Class and Trait definitions
+          case t@ClassDef(_, name, _, Template(supers, ValDef(_,_,selfType,_), body)) =>
+            occurrences += Occ(name.decodedName.toString, Declaration)
+            isSuper = true
+            traverseTrees(supers)
+            traverse(selfType)
+            isSuper = false
+            traverseTrees(body)
 
           case _ =>
             super.traverse(t)

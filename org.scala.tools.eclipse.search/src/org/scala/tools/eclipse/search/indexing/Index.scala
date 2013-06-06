@@ -264,6 +264,7 @@ trait Index extends HasLogger {
     persist(OFFSET, o.offset.toString)
     persist(OCCURRENCE_KIND, o.occurrenceKind.toString)
     persist(LINE_CONTENT, o.lineContent.toString)
+    persist(IS_IN_SUPER_POSITION, o.isInSuperPosition.toString)
     persist(PROJECT_NAME, project.getName)
 
     doc
@@ -286,6 +287,7 @@ trait Index extends HasLogger {
       occurrenceKind <- Option(doc.get(OCCURRENCE_KIND))
       lineContent    <- Option(doc.get(LINE_CONTENT))
       projectName    <- Option(doc.get(PROJECT_NAME))
+      isSuper        <- Try(doc.get(IS_IN_SUPER_POSITION).toBoolean).toOption
     } yield {
       val root = ResourcesPlugin.getWorkspace().getRoot()
       (for {
@@ -293,7 +295,7 @@ trait Index extends HasLogger {
         ifile          <- Option(project.getFile(Path.fromPortableString(path)))
         file           <- Util.scalaSourceFileFromIFile(ifile)
       } yield {
-        Occurrence(word, file, Integer.parseInt(offset), OccurrenceKind.fromString(occurrenceKind), lineContent)
+        Occurrence(word, file, Integer.parseInt(offset), OccurrenceKind.fromString(occurrenceKind), lineContent, isSuper)
       }).fold {
         // The file or project apparently no longer exists. This can happen
         // if the project/file has been deleted/renamed and a search is

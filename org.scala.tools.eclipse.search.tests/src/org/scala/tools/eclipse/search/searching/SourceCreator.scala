@@ -7,6 +7,8 @@ import org.junit.Assert._
 import org.eclipse.jdt.core.JavaCore
 import org.eclipse.jdt.core.IClasspathEntry
 import scala.Array.canBuildFrom
+import org.scala.tools.eclipse.search.indexing.OccurrenceCollector
+import org.scala.tools.eclipse.search.indexing.Occurrence
 
 trait SourceCreator {
 
@@ -73,6 +75,14 @@ trait SourceCreator {
           }
         }.getOrElse(fail("Couldn't get comparator for symbol"))
       }((fail("Couldn't get source file")))
+    }
+
+    def allOccurrences: Seq[Occurrence] = {
+      OccurrenceCollector.findOccurrences(unit).toOption.getOrElse(Nil)
+    }
+
+    def occurrencesThatMatch(f: Occurrence => Boolean): Seq[Occurrence] = {
+      allOccurrences.filter(f)
     }
 
   }
