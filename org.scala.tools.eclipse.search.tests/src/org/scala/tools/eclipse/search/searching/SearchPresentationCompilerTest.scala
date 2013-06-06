@@ -597,6 +597,35 @@ class SearchPresentationCompilerTest {
   }
 
   /**----------------------*
+   * declarationContaining *
+   * ----------------------*/
+
+  @Test
+  def declarationContaining_worksForSuperTypes {
+    project.create("DeclarationContainingWorksForSuperTypes.scala") {"""
+      class Foo
+      class B extends |Foo
+    """} expectedDeclarationNamed("B")
+  }
+
+  @Test
+  def declarationContaining_worksForObjectSuperTypes {
+    project.create("DeclarationContainingWorksForObjectSuperTypes.scala") {"""
+      trait Foo
+      object B extends |Foo
+    """} expectedDeclarationNamed("B")
+  }
+
+  @Test
+  def declarationContaining_worksForSelfTypes {
+    project.create("DeclarationContainingWorksForSelfTypes.scala") {"""
+      trait Foo
+      trait B { this: |Foo =>
+      }
+    """} expectedDeclarationNamed("B")
+  }
+
+  /**----------------------*
    * Various               *
    * ----------------------*/
 
