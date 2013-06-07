@@ -129,10 +129,15 @@ trait SourceCreator {
 
       var cursors = List[Int]()
 
+      var count = 0
       var offset = text.indexOf(CaretMarker)
       while (offset != -1) {
-        cursors = cursors :+ offset
+        // Subtract the index by the number of carets
+        // that preceded this one as they won't show
+        // up in the final source.
+        cursors = cursors :+ (offset - count)
         offset = text.indexOf(CaretMarker, offset+1)
+        count += 1
       }
 
       val cleanedText = text.filterNot(_ == CaretMarker).mkString
