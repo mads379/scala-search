@@ -3,6 +3,8 @@ package org.scala.tools.eclipse.search.indexing
 import scala.tools.eclipse.javaelements.ScalaSourceFile
 import org.scala.tools.eclipse.search.searching.Hit
 import scala.tools.eclipse.javaelements.ScalaCompilationUnit
+import org.scala.tools.eclipse.search.searching.ExactHit
+import org.scala.tools.eclipse.search.searching.PotentialHit
 
 /**
  * Represents the various kinds of occurrences that we deal with
@@ -56,5 +58,9 @@ case class Occurrence(
       file.file.file.getAbsolutePath(),
       offset.toString,
       occurrenceKind.toString)
+
+  def toPotentialHit = PotentialHit(file, word, lineContent, offset)
+
+  def toExactHit = ExactHit(file, word, lineContent, offset)
 
 }
