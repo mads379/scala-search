@@ -626,6 +626,67 @@ class SearchPresentationCompilerTest {
   }
 
   /**----------------------*
+   * directSupertypes      *
+   * ----------------------*/
+
+  @Test
+  def directSupertypes_worksForClasses = {
+    // The compiler automatically adds AnyRef if not other
+    // super-types are defined.
+    project.create("DirectSuperTypesWorksForClasses.scala"){"""
+      class |A
+    """} expectedSupertypes("Object")
+  }
+
+  @Test
+  def directSupertypes_worksForClasInheritance = {
+    // Doesn't add AnyRef when a super-type is provided
+    project.create("DirectSuperTypesWorksForClassInheritance.scala"){"""
+      class A
+      class |B extends A
+    """} expectedSupertypes("A")
+  }
+
+  @Test
+  def directSupertypes_worksForTraits = {
+    project.create("DirectSuperTypesWorksForTraits.scala"){"""
+      trait |A
+    """} expectedSupertypes("Object", "AnyRef")
+  }
+
+  @Test
+  def directSupertypes_worksForMixins = {
+    project.create("DirectSuperTypesWorksForMixins.scala"){"""
+      trait A
+      trait B
+      trait |C extends A with B
+    """} expectedSupertypes("A", "B", "Object", "AnyRef")
+  }
+
+  @Test
+  def directSupertypes_worksForObjects = {
+    project.create("DirectSuperTypesWorksForObjects.scala"){"""
+      object |A
+    """} expectedSupertypes("Object")
+  }
+
+  @Test
+  def directSupertypes_worksForObjectsWithMixins = {
+    project.create("DirectSuperTypesWorksForObjectsWithMixins.scala"){"""
+      trait A
+      object |B extends A
+    """} expectedSupertypes("A", "Object")
+  }
+
+  @Test
+  def directSupertypes_worksForSelfTypes = {
+    project.create("DirectSuperTypesWorksForSelfTypes.scala"){"""
+      trait A
+      trait |B { this: A => }
+    """} expectedSupertypes("A", "Object")
+  }
+
+  /**----------------------*
    * Various               *
    * ----------------------*/
 

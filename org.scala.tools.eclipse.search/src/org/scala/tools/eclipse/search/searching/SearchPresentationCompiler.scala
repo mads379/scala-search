@@ -10,6 +10,7 @@ import org.scala.tools.eclipse.search.indexing.Occurrence
 import scala.reflect.internal.util.RangePosition
 import scala.tools.eclipse.javaelements.ScalaCompilationUnit
 import org.scala.tools.eclipse.search.indexing.Declaration
+import org.eclipse.core.resources.ResourcesPlugin
 
 sealed abstract class ComparisionResult
 case object Same extends ComparisionResult
@@ -114,6 +115,39 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
     })(None)
   }
 
+
+  /**
+   * Given a location of a class declaration, return a sequence containing all of the
+   * name of the super-types as well as instances of SymbolComparator for each super type
+   * that can be used to find the declaration.
+   */
+  def superTypesOfEntityAt(loc: Location): Option[Seq[(String, SymbolComparator)]] = {
+
+    def superTypes(sym: pc.Symbol): Seq[(String, SymbolComparator)] = {
+
+      def symFilter(s: pc.Symbol) = s != pc.NoSymbol
+      def tpeFilter(tpe: pc.Type) = pc.askOption { () => !(tpe =:= sym.tpe) } getOrElse(false)
+
+      def toSymbRslt(sym: pc.Symbol) = (sym.decodedName, createComparator(sym))
+      def toTpeRslt(tpe: pc.Type) = (tpe.toString, createTypeComparator(tpe))
+
+      sym match {
+        case x if x.isTrait  =>
+          (x.parentSymbols filter(symFilter) map(toSymbRslt)) ++
+          (x.asClass.selfType.parents filter(tpeFilter) map(toTpeRslt))
+        case x if x.isClass || x.isModule =>
+          x.parentSymbols filter(symFilter) map(toSymbRslt)
+      }
+    }
+
+    loc.cu.withSourceFile { (sf, _) =>
+      symbolAt(loc, sf) match {
+        case FoundSymbol(sym) => Some(superTypes(sym))
+        case _ => None
+      }
+    }(None)
+  }
+
   /**
    * Given a location, find the declaration that contains the
    * given location. Consider the example below
@@ -163,14 +197,37 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
    * used to see if symbols at other locations are the same as this symbol.
    */
   def comparator(loc: Location): Option[SymbolComparator] = {
+    loc.cu.withSourceFile({ (sf, _) =>
+      symbolAt(loc, sf) match {
+        case FoundSymbol(symbol) => Some(createComparator(symbol))
+        case _ => None
+      }
+    })(None)
+  }
 
+  private def createTypeComparator(tpe: pc.Type): SymbolComparator = {
+    SymbolComparator { loc =>
+      loc.cu.withSourceFile { (sf, pc) => 
+        val spc = new SearchPresentationCompiler(pc)
+        spc.symbolAt(loc, sf) match {
+          case spc.FoundSymbol(sym) => (for {
+            imported <- importSymbol(spc)(sym)
+            result   <- pc.askOption { () => if (imported.tpe =:= tpe) Same else NotSame }
+          } yield result) getOrElse NotSame
+          case _ => PossiblySame
+        }
+      }(PossiblySame)
+    }
+  }
+
+  private def createComparator(symbol: pc.Symbol): SymbolComparator = {
     def compare(s1: pc.Symbol, s2: pc.Symbol): Option[Boolean] = pc.askOption { () =>
       if (isValOrVar(s1)) isSameValOrVar(s1, s2)
       else if (s1.isMethod) isSameMethod(s1.asMethod, s2)
       else isSameSymbol(s1, s2)
     } flatten
 
-    def createComparator(symbol: pc.Symbol) = SymbolComparator { otherLoc =>
+    SymbolComparator { otherLoc =>
       otherLoc.cu.withSourceFile { (otherSf, otherPc) =>
         val otherSpc = new SearchPresentationCompiler(otherPc)
         otherSpc.symbolAt(otherLoc, otherSf) match {
@@ -183,14 +240,8 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
         }
       }(PossiblySame)
     }
-
-    loc.cu.withSourceFile({ (sf, _) =>
-      symbolAt(loc, sf) match {
-        case FoundSymbol(symbol) => Some(createComparator(symbol))
-        case _ => None
-      }
-    })(None)
   }
+
 
   /**
    * Get the symbol of the entity at a given location in a file.

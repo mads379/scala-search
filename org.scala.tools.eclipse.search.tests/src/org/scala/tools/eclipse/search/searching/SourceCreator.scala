@@ -28,7 +28,19 @@ trait SourceCreator {
         val spc = new SearchPresentationCompiler(pc)
         val foundnames = spc.possibleNamesOfEntityAt(Location(unit, markers.head))
         assertEquals(names, foundnames.getOrElse(Nil))
-      } (fail("Couldn't get Scala source file"))
+      }(fail("Couldn't get Scala source file"))
+    }
+
+    def expectedSupertypes(expectedNames: String*): Unit = {
+      unit.withSourceFile { (sf, pc) =>
+        val spc = new SearchPresentationCompiler(pc)
+        val loc = Location(unit, markers.head)
+
+        val namesAndComparators = spc.superTypesOfEntityAt(loc).getOrElse(Nil)
+        val names = namesAndComparators.map( _._1 )
+
+        assertEquals(expectedNames.toSet, names.toSet)
+      }(fail("Couldn't get Scala source file"))
     }
 
     def expectedDeclarationNamed(name: String): Unit = {
