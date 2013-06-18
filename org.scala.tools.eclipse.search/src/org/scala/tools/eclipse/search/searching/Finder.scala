@@ -21,6 +21,63 @@ class Finder(index: Index, reporter: ErrorReporter) extends HasLogger {
   private val finder: ProjectFinder = new ProjectFinder
 
   /**
+   * Find all super-classes of the type at the given location.
+   *
+   * - Exact matches are passed to the `hit` function.
+   * - Potential matches are passed to the `potentialHit` function. A potential
+   *   match is when the index reports and occurrence but we can't type-check
+   *   the given point to see if it is an exact match.
+   * - Should any errors occur in the Index that we can't handle, the failures
+   *   are passed to the `errorHandler` function.
+   */
+  def findAllSuperclasses(location: Location, monitor: IProgressMonitor = new NullProgressMonitor)
+                         (hit: ExactHit => Unit,
+                          potentialHit: PotentialHit => Unit = _ => (),
+                          errorHandler: SearchFailure => Unit = _ => ()): Unit = {
+
+    val allScala = relevantProjects(location)
+
+    // Given a single super-type, find the declaration
+    def findDeclarationOfType(name: String, comparator: SymbolComparator): Unit = {
+      val (occurrences, errors) = index.findDeclarations(name, allScala)
+      errors foreach errorHandler
+      val it = occurrences.iterator
+      while (it.hasNext && !monitor.isCanceled) {
+        val occurrence = it.next
+        val loc = Location(occurrence.file, occurrence.offset)
+        comparator.isSameAs(loc) match {
+          case Same         => hit(occurrence.toExactHit)
+          case PossiblySame => potentialHit(occurrence.toPotentialHit)
+          case NotSame      => logger.debug(s"$occurrence wasn't the same.")
+        }
+      }
+    }
+
+    // For each super-type, find the declaration
+    def process(types: Seq[(String, SymbolComparator)]): Unit = {
+      val it = types.iterator
+      while (it.hasNext && !monitor.isCanceled()) {
+        val (name, comparator) = it.next
+        monitor.subTask(s"Finding declaration of $name")
+        findDeclarationOfType(name, comparator) 
+        monitor.worked(1)
+      }
+    }
+
+    // Get all the super-types of the declared entity at the given location
+    location.cu.withSourceFile { (sf, pc) =>
+      val spc = new SearchPresentationCompiler(pc)
+      for {
+        types <- spc.superTypesOfEntityAt(location) onEmpty reporter.reportError(symbolErrMsg(location, sf))
+      } {
+        monitor.beginTask("Typechecking for exact matches", types.size)
+        process(types)
+        monitor.done()
+      }
+    }(reporter.reportError(s"Could not access source file ${location.cu.file.path}"))
+  }
+
+  /**
    * Find all subclasses of the type at the given location.
    *
    * - Exact matches are passed to the `hit` function.

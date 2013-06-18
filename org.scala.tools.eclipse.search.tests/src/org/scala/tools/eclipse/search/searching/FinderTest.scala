@@ -230,6 +230,37 @@ class FinderTest {
 
   /*
    * -------------------
+   * findAllSuperclasses
+   * -------------------
+   */
+
+  @Test
+  def canFindSuperclassesOfPlainClass = supertypeTest("WorksForClasses"){"""
+    class |Foo
+    class |Bar extends Foo
+  """}
+
+  @Test
+  def findSuperclassesWithMixins = supertypeTest("WorksForMixins"){"""
+    trait |A
+    trait |B
+    trait |C extends A with B
+  """}
+
+  @Test
+  def findSuperclassesWithSelfTypes = supertypeTest("WorksForSelftypes"){"""
+    trait |A
+    trait |B { this: A => }
+  """}
+
+  @Test
+  def findSuperclassesWithObjects = supertypeTest("WorksForObjects"){"""
+    trait |A
+    object |B extends A
+  """}
+
+  /*
+   * -------------------
    * Error Handling
    * -------------------
    */
@@ -392,7 +423,37 @@ object FinderTest extends TestUtil
     val notFound = source.markers.tail.filter(!hitsOffsets.contains(_))
 
     assertEquals(
-        s"Expected it to find subclasses at all markers, but didn't find: ${notFound}, found ${hitsOffsets}", 
+        s"Expected it to find subclasses at all markers, but didn't find: ${notFound}, found ${hitsOffsets}",
+        true, notFound.isEmpty)
+  }
+
+  // Convenience method to create tests for finding super-classes. The `text` simply
+  // needs to contain some class declarations. The last marker should be placed at
+  // the class to find super-types of. The rest of the markers represent the expected
+  // results (i.e. a marker at a declaration means that you expect to find that
+  // type as a super-type of the last marker).
+  def supertypeTest(name: String)(text: String): Unit = {
+
+    val project = Project(s"FindAllSuperclassesTest-$name")
+
+    val indexer = anonymousIndexer
+    val finder = anonymousFinder(indexer.index)
+
+    val source = project.create(s"$name.scala")(text)
+
+    indexer.indexProject(project.scalaProject)
+
+    var hitsOffsets = List[Int]()
+    finder.findAllSuperclasses(Location(source.unit, source.markers.last)) { hit =>
+      if (source.markers.contains(hit.offset)) {
+        hitsOffsets = hit.offset +: hitsOffsets
+      }
+    }
+
+    val notFound = source.markers.dropRight(1).filter(!hitsOffsets.contains(_))
+
+    assertEquals(
+        s"Expected it to find subclasses at all markers, but didn't find: ${notFound}, found ${hitsOffsets}",
         true, notFound.isEmpty)
   }
 
