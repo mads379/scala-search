@@ -77,7 +77,7 @@ class SearchResultPage
       selection <- event.getSelection().asInstanceOfOpt[IStructuredSelection]
       hit       <- selection.getFirstElement().asInstanceOfOpt[Hit] onEmpty logger.debug("Unexpected selection type")
       page      <- Option(JavaPlugin.getActivePage) onEmpty reporter.reportError("Couldn't get active page")
-      file      <- MatchAdatperHelper.getWorkspaceFile(hit) onEmpty reporter.reportError("File no longer exists")
+      file      <- Util.getWorkspaceFile(hit.cu) onEmpty reporter.reportError("File no longer exists")
       val input = new FileEditorInput(file)
       desc      <- Option(IDE.getEditorDescriptor(file.getName()))
       part      <- Option(IDE.openEditor(page, input, desc.getId()))
