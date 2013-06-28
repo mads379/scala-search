@@ -143,6 +143,63 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
   }
 
   /**
+   * Given a type entity of a class declaration, return a sequence containing all of the
+   * name of the super-types as well as instances of SymbolComparator for each super type
+   * that can be used to find the declaration.
+   */
+  def superTypesOf(entity: TypeEntity): Option[Seq[(String, SymbolComparator)]] = {
+
+    def superTypes(sym: pc.Symbol): Seq[(String, SymbolComparator)] = {
+
+      // The `selfType` always contains the owner type, i.e. consider the
+      // following example:
+      //
+      //     trait A
+      //     trait B
+      //     trait C extends B { this: A => }
+      //
+      // the selftype (typeOf[c].typeSymbol.asClass.selfType) is
+      // B with A, so when we ask for the parents we want to filter out the
+      // owner type.
+      def filterOwnerType(tpes: Seq[pc.Type]): Seq[pc.Type] = pc.askOption { () =>
+        tpes filterNot { _ =:= sym.tpe }
+      } getOrElse Nil
+
+      def toSymbRslt(sym: pc.Symbol) =
+        (sym.decodedName, createSymbolComparator(sym))
+
+      def toTpeRslt(tpe: pc.Type) =
+        (tpe.toString, createTypeComparator(tpe))
+
+      def hasExplicitSelfType(classSym: pc.ClassSymbol) = pc.askOption { () => 
+        !(classSym.tpe =:= classSym.selfType) } getOrElse false
+
+      def symFilter(s: pc.Symbol) = s != pc.NoSymbol
+
+      // Given a type such as 'A with B' this will `flatten` the
+      // type such that it returns Seq(A,B).
+      def flatten(tps: Seq[pc.Type]): Seq[pc.Type] = tps flatMap {
+        case pc.RefinedType(parents, ds) if ds.isEmpty => flatten(parents)
+        case tp => List(tp)
+      }
+
+      sym match {
+        case x if x.isTrait && hasExplicitSelfType(x.asClass) =>
+          val ownerParents = x.parentSymbols filter(symFilter) map(toSymbRslt)
+          val selftypes = flatten(filterOwnerType(x.asClass.selfType.parents)) map toTpeRslt
+          ownerParents ++ selftypes
+        case x if x.isClass || x.isModule =>
+          x.parentSymbols filter(symFilter) map(toSymbRslt)
+      }
+    }
+
+    symbolAt(entity.location) match {
+      case FoundSymbol(sym) => Some(superTypes(sym))
+      case _ => None
+    }
+  }
+
+  /**
    * Given a location, find the declaration that contains the
    * given location. Consider the example below
    *
@@ -185,7 +242,16 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
    * used to see if symbols at other locations are the same as this symbol.
    */
   def comparator(loc: Location): Option[SymbolComparator] = {
+    symbolAt(loc) match {
+      case FoundSymbol(symbol) => Some(createSymbolComparator(symbol))
+      case _ => None
+    }
+  }
 
+  /**
+   * Comparator that can be used to compare symbols.
+   */
+  private def createSymbolComparator(symbol: pc.Symbol) = SymbolComparator { otherLoc =>
     def compare(s1: pc.Symbol, s2: pc.Symbol): Option[Boolean] = pc.askOption { () =>
       if (s1.isLocal || s2.isLocal) isSameSymbol(s1,s2)
       else if (isValOrVar(s1)) isSameValOrVar(s1, s2)
@@ -193,23 +259,34 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
       else isSameSymbol(s1, s2)
     } flatten
 
-    def createComparator(symbol: pc.Symbol) = SymbolComparator { otherLoc =>
-      otherLoc.cu.withSourceFile { (_, otherPc) =>
-        val otherSpc = new SearchPresentationCompiler(otherPc)
-        otherSpc.symbolAt(otherLoc) match {
-          case otherSpc.FoundSymbol(symbol2) => (for {
-            imported <- importSymbol(otherSpc)(symbol2)
-            isSame   <- compare(symbol,imported)
-            result   = if(isSame) Same else NotSame
+    otherLoc.cu.withSourceFile { (_, otherPc) =>
+      val otherSpc = new SearchPresentationCompiler(otherPc)
+      otherSpc.symbolAt(otherLoc) match {
+        case otherSpc.FoundSymbol(symbol2) => (for {
+          imported <- importSymbol(otherSpc)(symbol2)
+          isSame   <- compare(symbol,imported)
+          result   = if(isSame) Same else NotSame
+        } yield result) getOrElse NotSame
+        case _ => PossiblySame
+      }
+    }(PossiblySame)
+  }
+
+  /**
+   * Comparator that can be used to compare types rather than symbols
+   */
+  private def createTypeComparator(tpe: pc.Type): SymbolComparator = {
+    SymbolComparator { loc =>
+      loc.cu.withSourceFile { (_, pc) =>
+        val spc = new SearchPresentationCompiler(pc)
+        spc.symbolAt(loc) match {
+          case spc.FoundSymbol(sym) => (for {
+            imported <- importSymbol(spc)(sym)
+            result   <- pc.askOption { () => if (imported.tpe =:= tpe) Same else NotSame }
           } yield result) getOrElse NotSame
           case _ => PossiblySame
         }
       }(PossiblySame)
-    }
-
-    symbolAt(loc) match {
-      case FoundSymbol(symbol) => Some(createComparator(symbol))
-      case _ => None
     }
   }
 
