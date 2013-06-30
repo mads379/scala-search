@@ -61,7 +61,7 @@ class Finder(index: Index, reporter: ErrorReporter) extends HasLogger {
     }(None)
   }
 
-    /**
+  /**
    * Find all supertypes of the given `entity`. The handler recieves
    * a Confidence[TypeEntity] for each supertype. See Confidence
    * ScalaDoc for more information.
@@ -144,7 +144,7 @@ class Finder(index: Index, reporter: ErrorReporter) extends HasLogger {
           typeEntity <- declEntity match {
             case x: TypeEntity => {
               if (spc.isSubtype(entity, x)) Some(x) else {
-                logger.debug(s"$x isn't a subtype of $entity")
+                logger.debug(s"${x.name} isn't a subtype of ${entity.name}")
                 None
               }
             }
