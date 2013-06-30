@@ -34,11 +34,11 @@ import org.scala.tools.eclipse.search.searching.LeafNode
  * TypeEntity which represents the root of the type hierarchy.
  *
  */
-class TypeHierarchyTreeContentProvider(viewer: TreeViewer) extends ITreeContentProvider with HasLogger {
+class TypeHierarchyTreeContentProvider(
+    viewer: TreeViewer,
+    expander: (TypeEntity, IProgressMonitor, Confidence[TypeEntity] => Unit) => Unit) extends ITreeContentProvider with HasLogger {
 
-  private val lock = new Object
-
-  private val finder = SearchPlugin.finder
+    private val lock = new Object
 
   /* This is the type that is used as the base of the hierarchy, i.e.
    * the "input" that we should use to produce the content for the
@@ -145,7 +145,7 @@ class TypeHierarchyTreeContentProvider(viewer: TreeViewer) extends ITreeContentP
     val job = new Job(s"Finding subtypes of ${entity.name}") {
       override def run(monitor: IProgressMonitor): IStatus = {
         var found: Seq[ElementType] = Nil
-        finder.findSubtypes(entity, monitor) { hit => found = EvaluatedNode(hit) +: found }
+        expander(entity, monitor, (hit: Confidence[TypeEntity]) => { found = EvaluatedNode(hit) +: found })
         lock.synchronized {
           // make sure it's still the same root.
           if (oldRoot eq input) {

@@ -500,7 +500,7 @@ object FinderTest extends TestUtil
 
     project.delete
 
-    assertEquals(names.toSet, hitNames.toSet)
+    assertEquals(names, hitNames)
   }
 
   def find(finder: Finder, loc: Location)(f: Confidence[Hit] => Unit): Unit = {
