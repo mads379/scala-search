@@ -149,7 +149,7 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
    */
   def superTypesOf(entity: TypeEntity): Option[Seq[(String, SymbolComparator)]] = {
 
-    def superTypes(sym: pc.Symbol): Seq[(String, SymbolComparator)] = {
+    def superTypes(sym: pc.Symbol): Option[Seq[(String, SymbolComparator)]] = {
 
       // The `selfType` always contains the owner type, i.e. consider the
       // following example:
@@ -161,18 +161,21 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
       // the selftype (typeOf[c].typeSymbol.asClass.selfType) is
       // B with A, so when we ask for the parents we want to filter out the
       // owner type.
-      def filterOwnerType(tpes: Seq[pc.Type]): Seq[pc.Type] = pc.askOption { () =>
+      // Needs to be invoked inside of the PC thread
+      def filterOwnerType(tpes: Seq[pc.Type]): Seq[pc.Type] =
         tpes filterNot { _ =:= sym.tpe }
-      } getOrElse Nil
 
+      // Needs to be invoked inside of the PC thread
       def toSymbRslt(sym: pc.Symbol) =
         (sym.decodedName, createSymbolComparator(sym))
 
+      // Needs to be invoked inside of the PC thread
       def toTpeRslt(tpe: pc.Type) =
         (tpe.toString, createTypeComparator(tpe))
 
-      def hasExplicitSelfType(classSym: pc.ClassSymbol) = pc.askOption { () => 
-        !(classSym.tpe =:= classSym.selfType) } getOrElse false
+      // Needs to be invoked inside of the PC thread
+      def hasExplicitSelfType(classSym: pc.ClassSymbol) =
+        !(classSym.tpe =:= classSym.selfType)
 
       def symFilter(s: pc.Symbol) = s != pc.NoSymbol
 
@@ -183,18 +186,20 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
         case tp => List(tp)
       }
 
-      sym match {
-        case x if x.isTrait && hasExplicitSelfType(x.asClass) =>
-          val ownerParents = x.parentSymbols filter(symFilter) map(toSymbRslt)
-          val selftypes = flatten(filterOwnerType(x.asClass.selfType.parents)) map toTpeRslt
-          ownerParents ++ selftypes
-        case x if x.isClass || x.isModule =>
-          x.parentSymbols filter(symFilter) map(toSymbRslt)
+      pc.askOption { () =>
+        sym match {
+          case x if x.isTrait && hasExplicitSelfType(x.asClass) =>
+            val ownerParents = x.parentSymbols filter(symFilter) map(toSymbRslt)
+            val selftypes = flatten(filterOwnerType(x.asClass.selfType.parents)) map toTpeRslt
+            ownerParents ++ selftypes
+          case x if x.isClass || x.isModule =>
+            x.parentSymbols filter(symFilter) map(toSymbRslt)
+        }
       }
     }
 
     symbolAt(entity.location) match {
-      case FoundSymbol(sym) => Some(superTypes(sym))
+      case FoundSymbol(sym) => superTypes(sym)
       case _ => None
     }
   }
