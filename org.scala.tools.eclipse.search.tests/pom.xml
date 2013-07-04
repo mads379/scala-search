@@ -24,6 +24,21 @@
       <artifactId>lucene-analyzers-common</artifactId>
       <version>4.1.0</version>
     </dependency>
+    <dependency>
+      <groupId>asm</groupId>
+      <artifactId>asm</artifactId>
+      <version>3.3</version>
+    </dependency>
+    <dependency>
+      <groupId>asm</groupId>
+      <artifactId>asm-commons</artifactId>
+      <version>3.3</version>
+    </dependency>
+    <dependency>
+      <groupId>asm</groupId>
+      <artifactId>asm-util</artifactId>
+      <version>3.3</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -65,6 +80,24 @@
                   <groupId>org.apache.lucene</groupId>
                   <artifactId>lucene-analyzers-common</artifactId>
                   <version>4.1.0</version>
+                  <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>asm</groupId>
+                  <artifactId>asm</artifactId>
+                  <version>3.3</version>
+                  <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>asm</groupId>
+                  <artifactId>asm-commons</artifactId>
+                  <version>3.3</version>
+                  <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>asm</groupId>
+                  <artifactId>asm-util</artifactId>
+                  <version>3.3</version>
                   <outputDirectory>${project.build.directory}/lib</outputDirectory>
                 </artifactItem>
               </artifactItems>

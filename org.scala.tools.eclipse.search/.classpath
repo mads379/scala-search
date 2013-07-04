@@ -6,5 +6,8 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="target/lib/lucene-analyzers-common-4.1.0.jar"/>
 	<classpathentry kind="lib" path="target/lib/lucene-core-4.1.0.jar"/>
+	<classpathentry kind="lib" path="/Users/hartmann/dev/scala-search/org.scala.tools.eclipse.search/target/lib/asm-3.3.jar"/>
+	<classpathentry kind="lib" path="/Users/hartmann/dev/scala-search/org.scala.tools.eclipse.search/target/lib/asm-commons-3.3.jar"/>
+	<classpathentry kind="lib" path="/Users/hartmann/dev/scala-search/org.scala.tools.eclipse.search/target/lib/asm-util-3.3.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

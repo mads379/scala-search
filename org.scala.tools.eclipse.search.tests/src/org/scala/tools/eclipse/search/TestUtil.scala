@@ -24,6 +24,11 @@ trait TestUtil {
   // actually broken.
   val EVENT_DELAY = 10
 
+  def deleteAll(file: File): Boolean = if (file.isDirectory()) {
+      file.listFiles.toList foreach(deleteAll)
+      file.delete
+    } else file.delete
+
   def mkPath(xs: String*): String = {
     xs.mkString(File.separator)
   }
