@@ -871,7 +871,7 @@ class SearchPresentationCompilerTest {
 
    @Test
    def directSupertypes_selftypeThatContainsOperators = {
-     // Make sure we don't get the demangled name.
+     // Make sure we get the demangled name.
      // Compiler adds object because A isn't a concrete class.
      project.create("DirectSupertypes_selftypeThatContainsOperators.scala"){"""
        trait A_
