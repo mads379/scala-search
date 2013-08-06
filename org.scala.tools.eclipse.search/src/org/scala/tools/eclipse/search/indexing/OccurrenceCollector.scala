@@ -83,8 +83,8 @@ object OccurrenceCollector extends HasLogger {
             occurrences += mkOccurrence(name.decodedName.toString, Declaration)
             isSuper = true
             traverseTrees(supers)
-            traverse(selfType)
             isSuper = false
+            traverse(selfType)
             traverseTrees(body)
 
           // Object definition

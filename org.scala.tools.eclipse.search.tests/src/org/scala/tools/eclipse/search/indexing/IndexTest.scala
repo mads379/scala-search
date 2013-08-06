@@ -158,7 +158,7 @@ class IndexTest {
 
     val (occurrences, _) = index.findOccurrencesInSuperPosition("A", Set(project.scalaProject))
 
-    assertEquals("A", 2, occurrences.size)
+    assertEquals("A", 1, occurrences.size)
   }
 
    @Test

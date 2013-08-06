@@ -66,9 +66,8 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
     (for {
       s1 <- getSymbol(symbolAt(superType.location)) onEmpty logger.debug(s"Couldn't get symbol at ${superType.location}")
       s2 <- getSymbol(symbolAt(subType.location)) onEmpty logger.debug(s"Couldn't get symbol at ${subType.location}")
-      isSame <- isSameSymbol(s1,s2)
       isSubtype <- pc.askOption { () =>
-        !isSame && (s2.isSubClass(s1) || s2.typeOfThis.typeSymbol.isSubClass(s1))
+        !(s1.typeOfThis =:= s2.typeOfThis) && s2.typeOfThis <:< s1.typeOfThis
       }
     } yield isSubtype) getOrElse false
   }
@@ -151,50 +150,14 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
 
     def superTypes(sym: pc.Symbol): Option[Seq[(String, SymbolComparator)]] = {
 
-      // The `selfType` always contains the owner type, i.e. consider the
-      // following example:
-      //
-      //     trait A
-      //     trait B
-      //     trait C extends B { this: A => }
-      //
-      // the selftype (typeOf[c].typeSymbol.asClass.selfType) is
-      // B with A, so when we ask for the parents we want to filter out the
-      // owner type.
-      // Needs to be invoked inside of the PC thread
-      def filterOwnerType(tpes: Seq[pc.Type]): Seq[pc.Type] =
-        tpes filterNot { _ =:= sym.tpe }
-
-      // Needs to be invoked inside of the PC thread
-      def toSymbRslt(sym: pc.Symbol) =
-        (sym.decodedName, createSymbolComparator(sym))
-
       // Needs to be invoked inside of the PC thread
       def toTpeRslt(tpe: pc.Type) =
         (tpe.toString, createTypeComparator(tpe))
 
-      // Needs to be invoked inside of the PC thread
-      def hasExplicitSelfType(classSym: pc.Symbol) =
-        !(classSym.tpe =:= classSym.selfType)
-
       def symFilter(s: pc.Symbol) = s != null && s != pc.NoSymbol
 
-      // Given a type such as 'A with B' this will `flatten` the
-      // type such that it returns Seq(A,B).
-      def flatten(tps: Seq[pc.Type]): Seq[pc.Type] = tps flatMap {
-        case pc.RefinedType(parents, ds) if ds.isEmpty => flatten(parents)
-        case tp => List(tp)
-      }
-
       pc.askOption { () =>
-        sym match {
-          case x if (x.isClass || x.isTrait) && hasExplicitSelfType(x) =>
-            val ownerParents = x.parentSymbols filter(symFilter) map(toSymbRslt)
-            val selftypes = flatten(filterOwnerType(x.selfType.parents)) map toTpeRslt
-            ownerParents ++ selftypes
-          case x =>
-            x.parentSymbols filter(symFilter) map(toSymbRslt)
-        }
+        sym.parentSymbols filter(symFilter) map (s => toTpeRslt(s.typeOfThis))
       }
     }
 

@@ -783,13 +783,13 @@ class SearchPresentationCompilerTest {
    }
 
    @Test
-   def directSupertypes_worksForClassesWithSelfTypes = {
+   def directSupertypes_selftypeDoesntCountAsSuperTypeForClasses = {
      // The compiler automatically adds Object if not other
      // super-types are defined.
-     project.create("DirectSuperTypesWorksForClasses.scala"){"""
+     project.create("SelftypeDoesntCountAsSuperTypeForClasses.scala"){"""
        trait A
        class |B { this: A => }
-     """} expectedSupertypes("Object", "A")
+     """} expectedSupertypes("Object")
    }
 
    @Test
@@ -841,44 +841,34 @@ class SearchPresentationCompilerTest {
    }
 
    @Test
-   def directSupertypes_worksForSelfTypes = {
+   def directSupertypes_selftypeDoesntCountAsSuperTypeForTraits = {
      // Compiler still adds Object as super-type of B
-     project.create("DirectSuperTypesWorksForSelfTypes.scala"){"""
+     project.create("SelftypeDoesntCountAsSuperTypeForTraits.scala"){"""
        trait A
        trait |B { this: A => }
-     """} expectedSupertypes("Object", "A")
+     """} expectedSupertypes("Object")
    }
 
    @Test
    def directSupertypes_worksForMixedClassAndSelftype = {
+     // still want to make sure it doesn't list self-type
      project.create("DirectSuperTypesWorksForMixedClassAndSelfType.scala"){"""
        class A
        trait B
        trait |C extends A { this: B => }
-     """} expectedSupertypes("A", "B")
+     """} expectedSupertypes("A")
    }
 
    @Test
-   def directSupertypes_selftypeWithMixins = {
+   def directSupertypes_selftypeWithMixinsShouldStillBeIgnored = {
      // Compiler adds object because A isn't a concrete class.
-     project.create("DirectSuperTypesWorksSelftypeWithMixins.scala"){"""
+     project.create("DirectSuperTypesWorksSelftypeWithMixinsShouldStillBeIgnored.scala"){"""
        trait A
        trait B
        trait C
        trait |D extends A { this: B with C => }
-     """} expectedSupertypes("Object", "A", "B", "C")
+     """} expectedSupertypes("Object", "A")
    }
-
-   @Test
-   def directSupertypes_selftypeThatContainsOperators = {
-     // Make sure we get the demangled name.
-     // Compiler adds object because A isn't a concrete class.
-     project.create("DirectSupertypes_selftypeThatContainsOperators.scala"){"""
-       trait A_
-       trait |B { this: A_ => }
-     """} expectedSupertypes("Object", "A_")
-   }
-
 
   /**----------------------*
    * Various               *

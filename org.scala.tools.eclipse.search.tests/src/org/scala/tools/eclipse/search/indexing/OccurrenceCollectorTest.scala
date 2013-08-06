@@ -180,13 +180,13 @@ class OccurrenceCollectorTest {
   }
 
   @Test
-  def indexesSelfTypesAsSuperPosition = {
-    val results = project.create("IndexesSelfTypesAsTypesInSuperPosition.scala") {"""
+  def indexesSelfTypesAreNotConsideredSuperTypePositions = {
+    val results = project.create("IndexesSelfTypesAreNotConsideredSuperTypePositions.scala") {"""
       class A
       trait B { this: A => }
-    """} occurrencesThatMatch { o => o.isInSuperPosition && o.word == "A" }
+    """} occurrencesThatMatch { o => !o.isInSuperPosition && o.word == "A" }
 
-    assertEquals("Should be 1 occurrence of A in super position", 1, results.size)
+    assertEquals("Should be 1 occurrence of A in super position", 2, results.size)
   }
 
   @Test

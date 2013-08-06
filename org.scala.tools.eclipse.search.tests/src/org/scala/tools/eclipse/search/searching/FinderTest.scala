@@ -232,13 +232,13 @@ class FinderTest {
   """}
 
   @Test
-  def findAllSubclassesWorksWithSelfTypes = subclassTest("WorksWithSelfTypes"){"""
+  def findAllSubclassesIgnoresSelftypes = subclassesNamed("FindAllSubclassesIgnoresSelftypes"){"""
     trait |Foo
-    trait |Bar { this: Foo => }
-  """}
+    trait Bar { this: Foo => }
+  """}(Nil)
 
   @Test
-  def findAllSubclassesIgnoresTypeConstructorArguments = subclassesNamed("WorksWithSelfTypes"){"""
+  def findAllSubclassesIgnoresTypeConstructorArguments = subclassesNamed("FindAllSubclassesIgnoresTypeConstructorArguments"){"""
     trait Bar[A]
     trait |Foo extends Bar[Foo]
   """}(Nil) // I.e. make sure that Foo doesn't count as a subtype of Foo.
@@ -262,10 +262,10 @@ class FinderTest {
   """}(List("Foo"))
 
   @Test
-  def findSuperclassesWorksWithSelfTypes = superclassesNamed("WorksWithSelfTypes"){"""
+  def findSuperclassesDoesntCountSelfTypesAsSuperType = superclassesNamed("FindSuperclassesDoesntCountSelfTypesAsSuperType"){"""
     trait Foo
     trait |Bar { this: Foo => }
-  """}(List("Foo"))
+  """}(Nil)
 
   @Test
   def findSuperclassesIgnoresSupertypesNotDefinedInSource = superclassesNamed("IgnoresSuperTypesNotInSource"){"""
@@ -451,6 +451,8 @@ object FinderTest extends TestUtil
     assertEquals(
         s"Expected it to find subclasses at all markers, but didn't find: ${notFound}, found ${hitsOffsets}",
         true, notFound.isEmpty)
+    assertEquals(s"Expected to find '${source.markers.size-1}' subtypes but found '${hitsOffsets.size}'",
+        source.markers.size-1, hitsOffsets.size)
   }
 
   def subclassesNamed(name: String)(text: String)(names: List[String]): Unit = {
