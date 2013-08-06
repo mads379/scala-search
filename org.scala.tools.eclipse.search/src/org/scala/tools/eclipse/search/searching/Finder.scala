@@ -91,9 +91,8 @@ class Finder(index: Index, reporter: ErrorReporter) extends HasLogger {
 
     // For each super-type, find the declaration
     def process(types: Seq[(String, SymbolComparator)]): Unit = {
-      val it = types.iterator
-      while (it.hasNext && !monitor.isCanceled()) {
-        val (name, comparator) = it.next
+      for (i <- types if !monitor.isCanceled) {
+        val (name, comparator) = i
         monitor.subTask(s"Finding declaration of $name")
         findDeclarationOfType(name, comparator)
         monitor.worked(1)
@@ -207,9 +206,8 @@ class Finder(index: Index, reporter: ErrorReporter) extends HasLogger {
       monitor: IProgressMonitor,
       comparator: SymbolComparator,
       handler: Confidence[Hit] => Unit): Unit = {
-    val it = occurrences.iterator
-    while (it.hasNext && !monitor.isCanceled()) {
-      val occurrence = it.next
+
+    for { occurrence <- occurrences if !monitor.isCanceled } {
       monitor.subTask(s"Checking ${occurrence.file.file.name}")
       val loc = Location(occurrence.file, occurrence.offset)
       comparator.isSameAs(loc) match {
