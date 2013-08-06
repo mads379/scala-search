@@ -243,6 +243,25 @@ class FinderTest {
     trait |Foo extends Bar[Foo]
   """}(Nil) // I.e. make sure that Foo doesn't count as a subtype of Foo.
 
+  @Test
+  def findAllSubclasses_WorksWithTypeParameters = subclassesNamed("FindAllSubclassesWorksWithTypeParameters"){"""
+    trait |A[X]
+    trait B extends A[String]
+  """}(List("B"))
+
+  @Test
+  def findAllSubclasses_MakesDistinctionBetweenTypeParameters1 = subclassesNamed("FindAllSubclassesWorksWithTypeParameters1"){"""
+    trait A[X]
+    trait B extends |A[String]
+    trait C extends A[String]
+  """}(List("B", "C"))
+
+  @Test
+  def findAllSubclasses_MakesDistinctionBetweenTypeParameters2 = subclassesNamed("FindAllSubclassesWorksWithTypeParameters2"){"""
+    trait A[X]
+    trait B extends |A[String]
+    trait C extends A[Boolean]
+  """}(List("B"))
   /*
    * -----------------
    * findSupertypes

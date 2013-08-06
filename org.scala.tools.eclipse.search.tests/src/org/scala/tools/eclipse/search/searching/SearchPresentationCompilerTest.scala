@@ -783,6 +783,15 @@ class SearchPresentationCompilerTest {
    }
 
    @Test
+   def directSupertypes_worksForIntertanceWithTypeParameters = {
+     // Doesn't add AnyRef when a super-type is provided
+     project.create("DirectSuperTypesWorksForIntertanceWithTypeParameters.scala"){"""
+       trait A[X]
+       class |B extends A[String]
+     """} expectedSupertypes("Object", "A[X]")
+   }
+
+   @Test
    def directSupertypes_selftypeDoesntCountAsSuperTypeForClasses = {
      // The compiler automatically adds Object if not other
      // super-types are defined.
