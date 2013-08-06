@@ -78,7 +78,9 @@ class TypeHierarchyView extends ViewPart with HasLogger {
 
     superclasses.setContentProvider(
         new TypeHierarchyTreeContentProvider(superclasses, (e, m, h) => finder.findSupertypes(e, m)(h)))
-    superclasses.setLabelProvider(new TypeHierarchyTreeLabelProvider)
+    superclasses.setLabelProvider(new TypeHierarchyTreeLabelProvider(
+        leafLabel = "No Super-types"
+    ))
 
     // Configure the Sub-types view
     subLabel = new Label(parent, SWT.NONE)
@@ -91,7 +93,9 @@ class TypeHierarchyView extends ViewPart with HasLogger {
 
     subclasses.setContentProvider(
         new TypeHierarchyTreeContentProvider(subclasses, (e, m, h) => finder.findSubtypes(e, m)(h)))
-    subclasses.setLabelProvider(new TypeHierarchyTreeLabelProvider)
+    subclasses.setLabelProvider(new TypeHierarchyTreeLabelProvider(
+        leafLabel = "No Sub-types"
+    ))
 
     // Configure the Inspector view
     val inspectLabel = new Label(parent, SWT.NONE)

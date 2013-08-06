@@ -19,14 +19,14 @@ import org.scala.tools.eclipse.search.searching.EvaluatedNode
  * The type-hierarchy is represented using `TypeHierarchyNode` and they're produced in
  * `TypeHierarchyTreeContentProvider`.
  */
-class TypeHierarchyTreeLabelProvider extends StyledCellLabelProvider with HasLogger {
+class TypeHierarchyTreeLabelProvider(leafLabel: String) extends StyledCellLabelProvider with HasLogger {
 
   // Drawing code for the label.
   override def update(cell: ViewerCell) {
     val text = new StyledString
 
     cell.getElement() match {
-      case LeafNode => text.append("No subtypes")
+      case LeafNode => text.append(leafLabel)
       case EvaluatingNode => text.append("Loading...")
       case EvaluatedNode(Certain(entity)) => setEntity(cell, text, entity)
       case EvaluatedNode(Uncertain(entity)) =>
