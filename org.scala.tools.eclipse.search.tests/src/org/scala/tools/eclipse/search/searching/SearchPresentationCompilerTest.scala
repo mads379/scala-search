@@ -851,7 +851,7 @@ class SearchPresentationCompilerTest {
 
    @Test
    def directSupertypes_worksForMixedClassAndSelftype = {
-     project.create("DirectSuperTypesWorksForMixedClassAndSelfType.scala"){"""\
+     project.create("DirectSuperTypesWorksForMixedClassAndSelfType.scala"){"""
        class A
        trait B
        trait |C extends A { this: B => }
@@ -861,12 +861,22 @@ class SearchPresentationCompilerTest {
    @Test
    def directSupertypes_selftypeWithMixins = {
      // Compiler adds object because A isn't a concrete class.
-     project.create("DirectSuperTypesWorksSelftypeWithMixins.scala"){"""\
+     project.create("DirectSuperTypesWorksSelftypeWithMixins.scala"){"""
        trait A
        trait B
        trait C
        trait |D extends A { this: B with C => }
      """} expectedSupertypes("Object", "A", "B", "C")
+   }
+
+   @Test
+   def directSupertypes_selftypeThatContainsOperators = {
+     // Make sure we don't get the demangled name.
+     // Compiler adds object because A isn't a concrete class.
+     project.create("DirectSupertypes_selftypeThatContainsOperators.scala"){"""
+       trait A_
+       trait |B { this: A_ => }
+     """} expectedSupertypes("Object", "A_")
    }
 
 
