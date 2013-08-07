@@ -124,48 +124,79 @@ class Finder(index: Index, reporter: ErrorReporter) extends HasLogger {
   def findSubtypes(entity: TypeEntity, monitor: IProgressMonitor)
                   (handler: Confidence[TypeEntity] => Unit,
                    errorHandler: SearchFailure => Unit = _ => ()): Unit = {
+    /*
+     * We find the sub-types in the following way
+     *
+     * 1. Use the Index to find all places where the given type is
+     *    mention in the super-position of the declaration of another
+     *    type. I.e. we just use the name of the type, so if we have
+     *    `trait |Foo[A]` or `trait StringFoo extends |Foo[String]`
+     *    it will find all the places where `Foo` is mentioned.
+     *
+     *    We throw away the type parameters because when searching for
+     *    subtypes of Foo[A] then we also want to find Foo[String].
+     *
+     * 2. For each hit we get a pc.Type instance.
+     *
+     *    In the example `trait StringFoo extends Foo[String]` we get
+     *    the type of Foo[String].
+     *
+     *    Now there are two cases. If the type we want to find sub-types
+     *    of is a generic type, i.e. Foo[A] then we can't just use 
+     *    =:= to compare the types since Foo[A] =:= Foo[String] is false.
+     *    In this case we need to get a hold of the generic type when comparing
+     *    i.e. if f = typeOf[Foo[String]] then t.typeSymbol.typeOfThis
+     *
+     *    The other case is that we have a concrete type, i.e. Foo[String],
+     *    then we only want to find other subtypes of Foo[String] hence we can
+     *    use =:= on the types directly
+     *
+     * 3. For each exact hit, get the TypeEntity that contains the hit
+     *
+     */
 
-    val loc = Location(entity.location.cu, entity.location.offset)
+    val location = Location(entity.location.cu, entity.location.offset)
 
-    // Get the declaration that contains the given `hit`.
-    def getTypeEntity(hit: Hit): Option[TypeEntity] = {
+    // Step 1
+    def getOccurrencesInSuperPosition: Seq[Occurrence] = {
+      val (occurrences, failures) = index.findOccurrencesInSuperPosition(entity.name, relevantProjects(location))
+      failures.foreach(errorHandler)
+      occurrences
+    }
+
+    // Step2 - The actual logic is taken care of by the SearchPresentationCompiler
+    def comparator(spc: SearchPresentationCompiler) = spc.subtypeComparator(location)
+
+    // Step 3
+    def getDeclarationContaining(hit: Hit): Option[TypeEntity] = {
       hit.cu.withSourceFile { (sf,pc) =>
         val spc = new SearchPresentationCompiler(pc)
         for {
           declaration <- spc.declarationContaining(Location(hit.cu, hit.offset))
           declEntity <- entityAt(Location(declaration.file, declaration.offset))
           typeEntity <- declEntity match {
-            case x: TypeEntity => {
-              if (spc.isSubtype(entity, x)) Some(x) else {
-                logger.debug(s"${x.name} isn't a subtype of ${entity.name}")
-                None
-              }
-            }
+            case x: TypeEntity => Some(x)
             case _ => None
           }
         } yield typeEntity
       }(None)
     }
 
-    // Given a hit where the `entity` is used in a super-type position
-    // find the declaration that contains it and return it.
-    def onHit(hit: Confidence[Hit]): Unit = hit match {
-      case Certain(hit)   => getTypeEntity(hit) map Certain.apply foreach handler
-      case Uncertain(hit) => getTypeEntity(hit) map Uncertain.apply foreach handler
-    }
-
+    // tie it togehter
     entity.location.cu.withSourceFile { (sf, pc) =>
       val spc = new SearchPresentationCompiler(pc)
       for {
-        comparator <- spc.comparator(loc) onEmpty reporter.reportError(comparatorErrMsg(loc, sf))
+        comp <- comparator(spc) onEmpty logger.debug("Couldn't get comparator for " + location)
       } {
-        val (occurrences, failures) = index.findOccurrencesInSuperPosition(entity.name, relevantProjects(loc))
-        failures.foreach(errorHandler)
+        val occurrences = getOccurrencesInSuperPosition
         monitor.beginTask("Typechecking for exact matches", occurrences.size)
-        processSame(occurrences, monitor, comparator, onHit)
-        monitor.done()
+        processSame(occurrences, monitor, comp, hit => hit match {
+          case Certain(hit)   => getDeclarationContaining(hit) map Certain.apply foreach handler
+          case Uncertain(hit) => getDeclarationContaining(hit) map Uncertain.apply foreach handler
+        })
       }
-    }(reporter.reportError(s"Could not access source file ${loc.cu.file.path}"))
+    }(reporter.reportError(s"Could not access source file ${location.cu.file.path}"))
+    monitor.done()
   }
 
   /**

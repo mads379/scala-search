@@ -151,8 +151,15 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
     def superTypes(sym: pc.Symbol): Option[Seq[(String, SymbolComparator)]] = {
 
       // Needs to be invoked inside of the PC thread
-      def toTpeRslt(tpe: pc.Type) =
-        (tpe.toString, createTypeComparator(tpe))
+      def toTpeRslt(tpe: pc.Type) = {
+        // What we have here is concrete types, i.e. we have a declaration like
+        // trait StringFoo extends Foo[String] - we have the Foo[String] type
+        //
+        // so we want to show the Foo[String] as a super-type, but when we need
+        // to compare this type with the type of the declartion of Foo[A] we need
+        // to use the generic type.
+        (tpe.toString, concreteTypeComparator(tpe.typeSymbol.typeOfThis))
+      }
 
       def symFilter(s: pc.Symbol) = s != null && s != pc.NoSymbol
 
@@ -216,6 +223,22 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
     }
   }
 
+  def subtypeComparator(loc: Location): Option[SymbolComparator] = {
+    // Figure out if we have a generic or concrete type, i.e.
+    // Option[A] vs. Option[String]
+    // Needs to be invoked inside of the PC thread.
+    def isGeneric(tpe: pc.Type) =
+      tpe =:= tpe.typeSymbol.typeOfThis
+
+    for {
+      tpe <- typeAt(loc)
+      rslt <- pc.askOption { () =>
+        if (isGeneric(tpe)) genericTypeComparator(tpe)
+        else concreteTypeComparator(tpe)
+      }
+    } yield rslt
+  }
+
   /**
    * Comparator that can be used to compare symbols.
    */
@@ -243,14 +266,30 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
   /**
    * Comparator that can be used to compare types rather than symbols
    */
-  private def createTypeComparator(tpe: pc.Type): SymbolComparator = {
-    SymbolComparator { loc =>
-      loc.cu.withSourceFile { (_, pc) =>
+  private def concreteTypeComparator(tpe: pc.Type): SymbolComparator = {
+    createTypeComparator(tpe) { (otherType: pc.Type) =>
+      logger.debug(s"Concrete comparision of ${tpe} and the other ${otherType}")
+      otherType =:= tpe
+    }
+  }
+
+  private def genericTypeComparator(tpe: pc.Type): SymbolComparator = {
+    // The type we have is generic, thus we want to compare the type
+    // with the generic type of any concrete type instantiations
+    createTypeComparator(tpe) { (otherType: pc.Type) =>
+      logger.debug(s"Generic comparision of ${tpe} and the other ${otherType.typeSymbol.typeOfThis}")
+      tpe =:= otherType.typeSymbol.typeOfThis
+    }
+  }
+
+  private def createTypeComparator(tpe: pc.Type)(f: pc.Type => Boolean): SymbolComparator = {
+    SymbolComparator { locationOfOtherType =>
+      locationOfOtherType.cu.withSourceFile { (_, pc) =>
         val spc = new SearchPresentationCompiler(pc)
-        spc.symbolAt(loc) match {
-          case spc.FoundSymbol(sym) => (for {
-            imported <- importSymbol(spc)(sym)
-            result   <- pc.askOption { () => if (imported.tpe =:= tpe) Same else NotSame }
+        spc.symbolAt(locationOfOtherType) match {
+          case spc.FoundSymbol(otherSymbol) => (for {
+            importedSymbol <- importSymbol(spc)(otherSymbol)
+            result <- pc.askOption { () => if (f(importedSymbol.tpe)) Same else NotSame }
           } yield result) getOrElse NotSame
           case _ => PossiblySame
         }
@@ -267,7 +306,7 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
    * This resolves overloaded method symbols. @See resolveOverloadedSymbol for
    * more information.
    */
-  protected def symbolAt[A](loc: Location): SymbolRequest = {
+  protected def symbolAt(loc: Location): SymbolRequest = {
     loc.cu.withSourceFile { (sf, _) =>
       val typed = new Response[pc.Tree]
       val pos = new OffsetPosition(sf, loc.offset)
@@ -286,6 +325,81 @@ class SearchPresentationCompiler(val pc: ScalaPresentationCompiler) extends HasL
           NotTypeable
         })
     }(NotTypeable)
+  }
+
+  protected def typeAt(loc: Location): Option[pc.Type] = {
+    // Again we have the lovely problem that the compiler
+    // will evaluate as little information as possible so
+    // if we ask for the type at (| is the location)
+    //
+    //  class StringFoo extends |Foo[String]
+    //
+    // Then tree.tpe will be Foo and not Foo[String].
+
+    // This takes care of getting the full type in case it's
+    // a type that takes type arguments
+    def getTheFullType(treePos: pc.Position, cu: SourceFile): Option[pc.Type] = {
+      val TYPE_PARAMS_END_CHAR = 1
+
+      class AppliedTypeTreeLocator(pos: pc.Position) extends pc.Locator(pos) {
+        override def isEligible(t: pc.Tree) = t.isInstanceOf[pc.AppliedTypeTree] && super.isEligible(t)
+      }
+
+      val posOpt = pc.withParseTree(cu) { parsed =>
+        new AppliedTypeTreeLocator(treePos.pos).locateIn(parsed) match {
+          case pc.AppliedTypeTree(_, types) => {
+            val max = types.map(_.pos.endOrPoint).max
+            val start = treePos.pos.point
+            val end = max + TYPE_PARAMS_END_CHAR
+            val pos = new RangePosition(cu, start, start, end)
+            logger.debug("pos is " + pos)
+            Some(pos)
+          }
+          case x => None
+        }
+      }
+
+      posOpt flatMap { pos =>
+        val typed = new Response[pc.Tree]
+        pc.askTypeAt(pos, typed)
+        typed.get.fold(
+          tree => {
+            logger.debug("Found the type " + tree.tpe)
+            logger.debug("++ in the tree " + tree)
+            Some(tree.tpe)
+          },
+          err => {
+            logger.debug(err)
+            None
+          })
+      }
+    }
+
+    loc.cu.withSourceFile { (sf, _) =>
+      val typed = new Response[pc.Tree]
+      val pos = new OffsetPosition(sf, loc.offset)
+
+      pc.askTypeAt(pos, typed)
+      typed.get.fold(
+        tree => pc.askOption { () =>
+          if (tree.isDef) {
+            logger.debug("Was a def type")
+            Some(tree.symbol.tpe) // it's a definition so we can just use the type.
+          }
+          else if (tree.symbol.typeSignature.takesTypeArgs) {
+            logger.debug("Generic type so expanding selection")
+            getTheFullType(tree.pos, sf) // It's a type instantiation of a generic type
+          }
+          else {
+            logger.debug("Normal concrete type")
+            Some(tree.tpe) // A type is referenced and it's not generic so we're good.
+          }
+        },
+        err => {
+          logger.debug(err)
+          None
+        }).flatten
+    }(None)
   }
 
   /**

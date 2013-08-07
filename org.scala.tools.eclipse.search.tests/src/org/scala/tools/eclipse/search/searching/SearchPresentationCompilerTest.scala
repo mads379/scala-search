@@ -788,7 +788,7 @@ class SearchPresentationCompilerTest {
      project.create("DirectSuperTypesWorksForIntertanceWithTypeParameters.scala"){"""
        trait A[X]
        class |B extends A[String]
-     """} expectedSupertypes("Object", "A[X]")
+     """} expectedSupertypes("Object", "A[String]")
    }
 
    @Test

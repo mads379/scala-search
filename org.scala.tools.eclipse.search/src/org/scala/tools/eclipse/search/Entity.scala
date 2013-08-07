@@ -2,6 +2,9 @@ package org.scala.tools.eclipse.search
 
 import org.scala.tools.eclipse.search.searching.Location
 
+// TODO: Add fullname to each. So name won't contain type parameters
+// but fullname will i.e. TypeEntity("Foo", ..., "Foo[String]")
+
 /**
  * Our own simple abstraction for Scala entities. This abstraction is
  * used to pass information between the compiler and the components

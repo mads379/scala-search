@@ -244,20 +244,21 @@ class FinderTest {
   """}(Nil) // I.e. make sure that Foo doesn't count as a subtype of Foo.
 
   @Test
-  def findAllSubclasses_WorksWithTypeParameters = subclassesNamed("FindAllSubclassesWorksWithTypeParameters"){"""
+  def findAllSubclasses_WorksGenericTypes = subclassesNamed("FindAllSubclassesWorksGenericTypes"){"""
     trait |A[X]
     trait B extends A[String]
-  """}(List("B"))
+    trait C extends A[Int]
+  """}(List("B", "C"))
 
   @Test
-  def findAllSubclasses_MakesDistinctionBetweenTypeParameters1 = subclassesNamed("FindAllSubclassesWorksWithTypeParameters1"){"""
+  def findAllSubclasses_WorksWithConcreteTypes1 = subclassesNamed("FindAllSubclassesWorksWithConcreteTypes1"){"""
     trait A[X]
     trait B extends |A[String]
     trait C extends A[String]
   """}(List("B", "C"))
 
   @Test
-  def findAllSubclasses_MakesDistinctionBetweenTypeParameters2 = subclassesNamed("FindAllSubclassesWorksWithTypeParameters2"){"""
+  def findAllSubclasses_WorksWithConcreteTypes2 = subclassesNamed("FindAllSubclassesWorksWithConcreteTypes2"){"""
     trait A[X]
     trait B extends |A[String]
     trait C extends A[Boolean]
